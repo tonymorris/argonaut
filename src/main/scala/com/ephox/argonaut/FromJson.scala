@@ -2,13 +2,13 @@ package com.ephox
 package argonaut
 
 import scalaz._, Scalaz._
-import JsonValue._
+import FromJsonResult._
 import JsonIdentity._
 
 trait FromJson[A] {
   import FromJson._
 
-  def apply(json: Json): JsonValue[A]
+  def apply(json: Json): FromJsonResult[A]
 
   def map[B](f: A => B): FromJson[B] =
     fromJson(json => apply(json) map f)
@@ -16,7 +16,7 @@ trait FromJson[A] {
   def flatMap[B](f: A => FromJson[B]): FromJson[B] =
     fromJson(json => apply(json) flatMap (a => f(a)(json)))
 
-  def mapJsonValue[B](f: JsonValue[A] => JsonValue[B]): FromJson[B] =
+  def mapJsonValue[B](f: FromJsonResult[A] => FromJsonResult[B]): FromJson[B] =
     fromJson[B](j => f(apply(j)))
 
   def mapError(f: String => String): FromJson[A] =
@@ -32,13 +32,13 @@ trait FromJson[A] {
 object FromJson extends FromJsons
 
 trait FromJsons {
-  def fromJson[A](f: Json => JsonValue[A]): FromJson[A] = new FromJson[A] {
+  def fromJson[A](f: Json => FromJsonResult[A]): FromJson[A] = new FromJson[A] {
     def apply(json: Json) = f(json)
   }
 
   implicit def ListFromJson[A](implicit from: FromJson[A]): FromJson[List[A]] =
     fromJson(j => j.array.fold(
-      js => (js: List[Json]).traverse[JsonValue, A](z => from.apply(z)).mapError(e => "array contains an unexpected element [" + e + "]")
+      js => (js: List[Json]).traverse[FromJsonResult, A](z => from.apply(z)).mapError(e => "array contains an unexpected element [" + e + "]")
     , jsonError("not an array")
     ))
 

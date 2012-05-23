@@ -3,7 +3,7 @@ package argonaut
 
 trait JsonData[A] {
   def toJson(a: A): Json
-  def fromJson(json: Json): JsonValue[A]
+  def fromJson(json: Json): FromJsonResult[A]
 }
 
 object JsonData extends JsonDatas

@@ -4,13 +4,15 @@ package argonaut
 object Argonaut extends Argonauts
 
 trait Argonauts extends
-Jsons with
-JsonIdentitys with
-JsonPrinters with
-StringWraps with
 AsJsons with
+Cursors with
 FromJsons with
-ToJsons with
+FromJsonResults with
+Jsons with
 JsonDatas with
+JsonIdentitys with
 JsonLikes with
-JsonQuerys
+JsonPrinters with
+JsonQuerys with
+StringWraps with
+ToJsons

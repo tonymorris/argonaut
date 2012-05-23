@@ -3,7 +3,7 @@ package argonaut
 
 import scalaz._, Scalaz._
 import Json._
-import JsonValue._
+import FromJsonResult._
 import JsonQuery._
 import JsonIdentity._
 
@@ -23,13 +23,13 @@ trait JsonQuery {
     r <- j.traverse(x => from.apply(x)).flatMapError(m => error(json, path.toList, m))
   } yield r
 
-  def findjson(json: Json, path: List[String]): JsonValue[Json] =
+  def findjson(json: Json, path: List[String]): FromJsonResult[Json] =
     json -|| path match {
       case Some(j) => jsonValue(j)
       case None => error(json, path, "does not exist")
     }
 
-  def error[A](json: Json, path: List[String], note: String): JsonValue[A] =
+  def error[A](json: Json, path: List[String], note: String): FromJsonResult[A] =
     jsonError[A]("Path [" + path.mkString("/") + "] " + note + ", in json [\n" + JsonPrinter.pretty(json)+ "\n]")
 }
 
