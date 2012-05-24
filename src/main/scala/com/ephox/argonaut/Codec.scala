@@ -247,8 +247,31 @@ trait EncodeJsons {
       case (a, (b, c)) => (a, b, c)
     }
 
+  implicit def EncodeJsonMonad: Monad[EncodeJson] = new Monad[EncodeJson] {
+    def point[A](a: => A) = EncodeJson(_ => EncodeValue(a))
+    def bind[A, B](a: EncodeJson[A])(f: A => EncodeJson[B]) = a flatMap f
+    override def map[A, B](a: EncodeJson[A])(f: A => B) = a map f
+  }
+
 }
 
-trait DecodeJson[A] {
+trait DecodeJson[-A] {
   def decode(a: A): Json
+
+  def contramap[B](f: B => A): DecodeJson[B] =
+    DecodeJson(b => decode(f(b)))
+}
+
+object DecodeJson extends DecodeJsons {
+  def apply[A](f: A => Json): DecodeJson[A] =
+    new DecodeJson[A] {
+      def decode(a: A) = f(a)
+    }
+}
+
+trait DecodeJsons {
+
+  implicit def DecodeJsonContra: Contravariant[DecodeJson] = new Contravariant[DecodeJson] {
+    def contramap[A, B](r: DecodeJson[A])(f: B => A) = r contramap f
+  }
 }
