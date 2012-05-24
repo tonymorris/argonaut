@@ -28,6 +28,13 @@ sealed trait EncodeResult[+A] {
   def error: Option[String] =
     toEither.left.toOption
 
+  // Runs with a pretty English error message using the mismatched JSON value.
+  def run: Either[String, A] =
+    this match {
+      case EncodeError(j, e) => Left("Expected: \"" + e + "\" Actual \"" + j.name + "\"")
+      case EncodeValue(a) => Right(a)
+    }
+
   def map[B](f: A => B): EncodeResult[B] =
     this match {
       case EncodeError(j, e) => EncodeError(j, e)
