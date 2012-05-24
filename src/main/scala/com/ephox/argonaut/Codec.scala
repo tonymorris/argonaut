@@ -256,20 +256,73 @@ trait EncodeJsons {
 }
 
 trait DecodeJson[-A] {
-  def decode(a: A): Json
+  def name: String
+
+  def apply(a: A): Json
 
   def contramap[B](f: B => A): DecodeJson[B] =
-    DecodeJson(b => decode(f(b)))
+    DecodeJson(b => apply(f(b)), name)
 }
 
 object DecodeJson extends DecodeJsons {
-  def apply[A](f: A => Json): DecodeJson[A] =
+  def apply[A](f: A => Json, n: String): DecodeJson[A] =
     new DecodeJson[A] {
-      def decode(a: A) = f(a)
+      def name = n
+      def apply(a: A) = f(a)
     }
 }
 
 trait DecodeJsons {
+  import JsonLike._
+
+  implicit def IdDecodeJson: DecodeJson[Json] =
+    DecodeJson(q => q, "Json")
+
+  implicit def ListDecodeJson[A](implicit e: DecodeJson[A]): DecodeJson[List[A]] =
+    DecodeJson(a => jArray[Json](a map (e(_))), "[A]List[A]")
+
+  implicit def StreamDecodeJson[A](implicit e: DecodeJson[A]): DecodeJson[Stream[A]] =
+    DecodeJson(a => jArray[Json](a.toList map (e(_))), "[A]Stream[A]")
+
+  implicit def StringDecodeJson: DecodeJson[String] =
+    DecodeJson(jString[Json], "String")
+
+  implicit def DoubleDecodeJson: DecodeJson[Double] =
+    DecodeJson(jNumber[Json], "Double")
+
+  implicit def FloatDecodeJson: DecodeJson[Float] =
+    DecodeJson(a => jNumber[Json](a.toFloat), "Float")
+
+  implicit def IntDecodeJson: DecodeJson[Int] =
+    DecodeJson(a => jNumber[Json](a.toInt), "Int")
+
+  implicit def LongDecodeJson: DecodeJson[Long] =
+    DecodeJson(a => jNumber[Json](a.toLong), "Long")
+
+  implicit def BooleanDecodeJson: DecodeJson[Boolean] =
+    DecodeJson(jBool[Json], "Boolean")
+
+  implicit def CharDecodeJson: DecodeJson[Char] =
+    DecodeJson(a => jString[Json](a.toString), "Char")
+
+  implicit def JDoubleDecodeJson: DecodeJson[java.lang.Double] =
+    DecodeJson(a => jNumber[Json](a.doubleValue), "java.lang.Double")
+
+  implicit def JFloatDecodeJson: DecodeJson[java.lang.Float] =
+    DecodeJson(a => jNumber[Json](a.floatValue.toDouble), "java.lang.Float")
+
+  implicit def JIntegerDecodeJson: DecodeJson[java.lang.Integer] =
+    DecodeJson(a => jNumber[Json](a.intValue.toDouble), "java.lang.Integer")
+
+  implicit def JLongDecodeJson: DecodeJson[java.lang.Long] =
+    DecodeJson(a => jNumber[Json](a.longValue.toDouble), "java.lang.Long")
+
+  implicit def JBooleanDecodeJson: DecodeJson[java.lang.Boolean] =
+    DecodeJson(a => jBool[Json](a.booleanValue), "java.lang.Boolean")
+
+  implicit def JCharacterDecodeJson: DecodeJson[Char] =
+    DecodeJson(a => jString[Json](a.toString), "java.lang.Character")
+
 
   implicit def DecodeJsonContra: Contravariant[DecodeJson] = new Contravariant[DecodeJson] {
     def contramap[A, B](r: DecodeJson[A])(f: B => A) = r contramap f
