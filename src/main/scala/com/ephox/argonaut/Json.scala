@@ -33,6 +33,19 @@ sealed trait Json {
     }
 
   /**
+   * The name of the type of the JSON value.
+   */
+  def name: String =
+    this match {
+      case JNull      => "Null"
+      case JBool(_)   => "Boolean"
+      case JNumber(_) => "Number"
+      case JString(_) => "String"
+      case JArray(_)  => "Array"
+      case JObject(_) => "Object"
+    }
+
+  /**
    * Compute a `String` representation for this JSON value.
    */
   override def toString =
