@@ -9,7 +9,6 @@ Cursors with
 FromJsons with
 FromJsonResults with
 Jsons with
-JsonDatas with
 JsonIdentitys with
 JsonLikes with
 JsonPrinters with
