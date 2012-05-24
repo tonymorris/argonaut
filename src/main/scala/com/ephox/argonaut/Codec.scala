@@ -159,6 +159,7 @@ trait EncodeJsons {
   implicit def StringEncodeJson: EncodeJson[String] =
     encodej(_.string, "String")
 
+  // todo NaN for JNull
   implicit def DoubleEncodeJson: EncodeJson[Double] =
     encodej(_.number, "Double")
 
