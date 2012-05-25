@@ -159,12 +159,11 @@ trait EncodeJsons {
   implicit def StringEncodeJson: EncodeJson[String] =
     encodej(_.string, "String")
 
-  // todo NaN for JNull
   implicit def DoubleEncodeJson: EncodeJson[Double] =
-    encodej(_.number, "Double")
+    encodej(x => if(x.isNull) Some(Double.NaN) else x.number, "Double")
 
   implicit def FloatEncodeJson: EncodeJson[Float] =
-    encodej(_.number map (_.toFloat), "Float")
+    encodej(x => if(x.isNull) Some(Float.NaN) else x.number map (_.toFloat), "Float")
 
   implicit def IntEncodeJson: EncodeJson[Int] =
     encodej(_.number map (_.toInt), "Int")
@@ -215,6 +214,17 @@ trait EncodeJsons {
         }
       })
 
+  implicit def ValidationEncodeJson[E, A](implicit ea: EncodeJson[E], eb: EncodeJson[A]): EncodeJson[Validation[E, A]] =
+    EncodeJson(j =>
+      j.obj match {
+        case None => encodeError(j, "[E, A]Validation[E, A]")
+        case Some(o) => o match {
+          case ("Failure", v) :: Nil => ea(v) map (Validation.failure(_))
+          case ("Success", v) :: Nil => eb(v) map (Validation.success(_))
+          case _ => encodeError(j, "[E, A]Validation[E, A]")
+        }
+      })
+
   implicit def MapEncodeJson[V](implicit e: EncodeJson[V]): EncodeJson[Map[String, V]] =
     EncodeJson(j =>
       j.obj match {
@@ -244,9 +254,15 @@ trait EncodeJsons {
       })
 
   implicit def Tuple3EncodeJson[A, B, C](implicit ea: EncodeJson[A], eb: EncodeJson[B], ec: EncodeJson[C]): EncodeJson[(A, B, C)] =
-    Tuple2EncodeJson[A, (B, C)] map {
-      case (a, (b, c)) => (a, b, c)
-    }
+    EncodeJson(j =>
+      j.array match {
+        case Some(a::b::c::Nil) => for {
+          aa <- ea(a)
+          bb <- eb(b)
+          cc <- ec(c)
+        } yield (aa, bb, cc)
+        case _ => encodeError(j, "[A, B, C](A, B, C)")
+      })
 
   implicit def EncodeJsonMonad: Monad[EncodeJson] = new Monad[EncodeJson] {
     def point[A](a: => A) = EncodeJson(_ => EncodeValue(a))
@@ -323,6 +339,40 @@ trait DecodeJsons {
 
   implicit def JCharacterDecodeJson: DecodeJson[Char] =
     DecodeJson(a => jString[Json](a.toString), "java.lang.Character")
+
+  implicit def OptionDecodeJson[A](implicit e: DecodeJson[A]): DecodeJson[Option[A]] =
+    DecodeJson(_ match {
+      case None => jNull[Json]
+      case Some(a) => e(a)
+    }, "[A]Option[A]")
+
+  implicit def EitherDecodeJson[A, B](implicit ea: DecodeJson[A], eb: DecodeJson[B]): DecodeJson[Either[A, B]] =
+    DecodeJson(_ match {
+      case Left(a) => jSingleObject[Json]("Left", ea(a))
+      case Right(b) => jSingleObject[Json]("Right", eb(b))
+    }, "[A, B]Either[A, B]")
+
+  implicit def ValidationDecodeJson[E, A](implicit ea: DecodeJson[E], eb: DecodeJson[A]): DecodeJson[Validation[E, A]] =
+    DecodeJson(_ fold (
+      failure = e => jSingleObject[Json]("Failure", ea(e))
+    , success = a => jSingleObject[Json]("Success", eb(a))
+    ), "[E, A]Validation[E, A]")
+
+  implicit def MapDecodeJson[V](implicit e: DecodeJson[V]): DecodeJson[Map[String, V]] =
+    DecodeJson(ListDecodeJson[(String, V)] contramap ((_: Map[String, V]).toList) apply _, "[V]Map[String, V]")
+
+  implicit def SetDecodeJson[A](implicit e: DecodeJson[A]): DecodeJson[Set[A]] =
+    DecodeJson(ListDecodeJson[A] contramap ((_: Set[A]).toList) apply _, "[A]Set[A]")
+
+  implicit def Tuple2DecodeJson[A, B](implicit ea: DecodeJson[A], eb: DecodeJson[B]): DecodeJson[(A, B)] =
+    DecodeJson({
+      case (a, b) => jArray[Json](List(ea(a), eb(b)))
+    }, "[A, B](A, B)")
+
+  implicit def Tuple3DecodeJson[A, B, C](implicit ea: DecodeJson[A], eb: DecodeJson[B], ec: DecodeJson[C]): DecodeJson[(A, B, C)] =
+    DecodeJson({
+      case (a, b, c) => jArray[Json](List(ea(a), eb(b), ec(c)))
+    }, "[A, B, C](A, B, C)")
 
 
   implicit def DecodeJsonContra: Contravariant[DecodeJson] = new Contravariant[DecodeJson] {
