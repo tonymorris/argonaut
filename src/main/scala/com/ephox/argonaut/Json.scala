@@ -84,7 +84,6 @@ trait Jsons {
   type JsonString = String
   type JsonField = String
   type JsonAssoc = (JsonField, Json)
-  type JsonObject = List[JsonAssoc]
   type JsonObjectMap = Map[JsonField, Json]
 
   type PossibleJson =

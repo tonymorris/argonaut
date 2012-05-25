@@ -7,7 +7,7 @@ import JsonLike._
 class JsonParser extends Parsers {
   type Elem = Char
 
-  def jobject: Parser[Json] = openobject ~> repsep(pair, separator) <~ trailingcomma <~ closeobject ^^ jObject[Json]
+  def jobject: Parser[Json] = error("") // todo openobject ~> repsep(pair, separator) <~ trailingcomma <~ closeobject ^^ jObject[Json]
 
   def jarray: Parser[Json] = openarray ~> repsep(jvalue, separator) <~ trailingcomma <~ closearray ^^ jArray[Json]
 

@@ -3,10 +3,12 @@ package argonaut
 
 import scalaz._
 import JsonLike._
+import Json._
 import Lens._
 import CostateT._
 
 sealed trait Cursor {
+  /*
   val parent: Option[Cursor]
   val lefts: List[Json]
   val focus: Json
@@ -67,7 +69,7 @@ sealed trait Cursor {
       , _ => Nil
       , _ => Nil
       , a => a
-      , o => o map (_._2)
+      , o => error("") // todo o map (_._2) // Nil
       )
     children(focus) match {
       case Nil => None
@@ -79,12 +81,19 @@ sealed trait Cursor {
       })
     }
   }
-
+         */
 }
+private case object CNull extends Cursor
+private case class CBool(b: Boolean) extends Cursor
+private case class CNumber(n: JsonNumber) extends Cursor
+private case class CString(s: String) extends Cursor
+private case class CArray(ls: List[Json], x: Json, rs: List[Json]) extends Cursor
+private case class CObject(i: JsonObject, ls: List[JsonField], x: (JsonField, Json), rs: List[JsonField]) extends Cursor
 
 object Cursor extends Cursors
 
 trait Cursors {
+  /*
   def parentL: Cursor @?> Cursor =
     PLens(_.parent map (w => Costate(z => new Cursor {
       val parent = Some(z)
@@ -116,5 +125,5 @@ trait Cursors {
       val focus = w.focus
       val rights = z
     }, w.rights))
-
+            */
 }

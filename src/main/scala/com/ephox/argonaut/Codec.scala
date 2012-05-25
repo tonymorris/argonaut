@@ -204,6 +204,8 @@ trait EncodeJsons {
     )
 
   implicit def EitherEncodeJson[A, B](implicit ea: EncodeJson[A], eb: EncodeJson[B]): EncodeJson[Either[A, B]] =
+    error("") // todo
+  /*
     EncodeJson(j =>
       j.obj match {
         case None => encodeError(j, "[A, B]Either[A, B]")
@@ -213,8 +215,11 @@ trait EncodeJsons {
           case _ => encodeError(j, "[A, B]Either[A, B]")
         }
       })
+    */
 
   implicit def ValidationEncodeJson[E, A](implicit ea: EncodeJson[E], eb: EncodeJson[A]): EncodeJson[Validation[E, A]] =
+    error("") // todo
+  /*
     EncodeJson(j =>
       j.obj match {
         case None => encodeError(j, "[E, A]Validation[E, A]")
@@ -224,8 +229,11 @@ trait EncodeJsons {
           case _ => encodeError(j, "[E, A]Validation[E, A]")
         }
       })
+    */
 
   implicit def MapEncodeJson[V](implicit e: EncodeJson[V]): EncodeJson[Map[String, V]] =
+    error("") // todo
+  /*
     EncodeJson(j =>
       j.obj match {
         case None => encodeError(j, "[V]Map[String, V]")
@@ -234,6 +242,7 @@ trait EncodeJsons {
         } map (_.toMap)
       }
     )
+    */
 
   implicit def SetEncodeJson[A](implicit e: EncodeJson[A]): EncodeJson[Set[A]] =
     EncodeJson(j =>

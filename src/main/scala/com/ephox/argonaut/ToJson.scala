@@ -43,7 +43,7 @@ trait ToJsons {
     toJson(jArray[Json])
 
   implicit def ListToJsonObject: ToJson[List[(String, Json)]] =
-    toJson(jObject[Json])
+    error("") // todo toJson(jObject[Json])
 
   implicit def MapToJsonObject: ToJson[Map[String, Json]] =
     toJson(jObjectMap[Json])

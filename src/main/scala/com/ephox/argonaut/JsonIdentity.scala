@@ -78,13 +78,13 @@ trait JsonIdentity[J] {
    * If this is a JSON object, then prepend the given value, otherwise, return a JSON object with only the given value.
    */
   def ->:(k: => JsonAssoc)(implicit l: JsonLike[J]): J =
-    withObject(k :: _)
+    error("") // todo withObject(k :: _)
 
   /**
    * If this is a JSON object, and the association is set, then prepend the given value, otherwise, return a JSON object with only the given value.
    */
   def ->?:(o: => Option[JsonAssoc])(implicit l: JsonLike[J]): J =
-    o.map(k => withObject(k :: _)).getOrElse(j)
+    error("") // todo o.map(k => withObject(k :: _)).getOrElse(j)
 
   /**
    * If this is a JSON array, then prepend the given value, otherwise, return a JSON array with only the given value.
@@ -209,13 +209,13 @@ trait JsonIdentity[J] {
    * Returns the object of this JSON value, or the empty object if this JSON value is not an object.
    */
   def objectOrEmpty(implicit l: JsonLike[J]): JsonObject =
-    objectOr(Nil)
+    error("") // todo objectOr(Nil)
 
   /**
    * Returns the possible object map of this JSON value.
    */
   def objectMap(implicit l: JsonLike[J]): Option[JsonObjectMap] =
-    obj map (_.toMap)
+    error("") // todo obj map (_.toMap)
 
   /**
    * Returns the object map of this JSON value, or the given default if this JSON value is not an object.
