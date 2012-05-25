@@ -10,10 +10,10 @@ import JsonIdentity._
 trait JsonQuery {
   val json: Json
 
-  def as[A](implicit from: FromJson[A]) =
+  def as[A](implicit from: FromJson[A]): FromJsonResult[A] =
     from(json)
 
-  def value[A](path: String*)(implicit from: FromJson[A]) = for {
+  def value[A](path: String*)(implicit from: FromJson[A]): FromJsonResult[A] = for {
     j <- findjson(json, path.toList)
     r <- j.as[A].flatMapError(m => error(json, path.toList, m))
   } yield r
