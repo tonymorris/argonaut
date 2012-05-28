@@ -71,6 +71,6 @@ object JsonTest extends Properties("Json") {
 
   property("jSingleObject is single object") =
       forAll((f: JsonField, j: Json) =>
-        jSingleObject[Json](f, j).obj == Some(List((f, j))))
+        (jSingleObject[Json](f, j).obj map (_.toList)) == Some(List((f, j))))
 
 }
