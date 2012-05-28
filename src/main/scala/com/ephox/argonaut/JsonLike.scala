@@ -190,4 +190,9 @@ trait JsonLikes {
   def jObjectMap[J](x: JsonObjectMap)(implicit l: JsonLike[J]): J =
     l.jObject(JsonObject(x))
 
+  /**
+   * Construct a JSON value that is an object from an association list.
+   */
+  def jObjectAssocList[J](x: List[(JsonField, Json)])(implicit l: JsonLike[J]): J =
+    l.jObject(JsonObject(InsertionMap(x: _*)))
 }
