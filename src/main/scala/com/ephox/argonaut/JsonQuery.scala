@@ -3,13 +3,13 @@ package argonaut
 
 import scalaz._, Scalaz._
 import Json._
-import FromJsonResult._
 import JsonQuery._
 import JsonIdentity._
 
 trait JsonQuery {
   val json: Json
 
+  /*
   def as[A](implicit from: FromJson[A]): FromJsonResult[A] =
     from(json)
 
@@ -31,6 +31,7 @@ trait JsonQuery {
 
   def error[A](json: Json, path: List[String], note: String): FromJsonResult[A] =
     jsonError[A]("Path [" + path.mkString("/") + "] " + note + ", in json [\n" + JsonPrinter.pretty(json)+ "\n]")
+    */
 }
 
 object JsonQuery extends JsonQuerys

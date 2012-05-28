@@ -10,6 +10,9 @@ trait JsonIdentity[J] {
   import JsonLike._
   import JsonIdentity._
 
+  def asJson(implicit e: DecodeJson[J]): Json =
+    e(j)
+
   /**
    * Return `true` if this JSON value is `null`, otherwise, `false`.
    */
