@@ -1,6 +1,8 @@
 package com.ephox
 package argonaut
 
+import Json._
+
 trait ToJson[A] {
   def apply(a: A): Json
 }
@@ -42,10 +44,7 @@ trait ToJsons {
   implicit def ListToJsonArray: ToJson[List[Json]] =
     toJson(jArray[Json])
 
-  implicit def ListToJsonObject: ToJson[List[(String, Json)]] =
-    error("") // todo toJson(jObject[Json])
-
-  implicit def MapToJsonObject: ToJson[Map[String, Json]] =
+  implicit def MapToJsonObject: ToJson[JsonObjectMap] =
     toJson(jObjectMap[Json])
 
   implicit def ToJsonListAsJson[A](implicit to: ToJson[A]): ToJson[List[A]] =

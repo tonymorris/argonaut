@@ -1,6 +1,8 @@
 package com.ephox
 package argonaut
 
+import scalaz._
+
 trait JsonIdentity[J] {
   val j: J
   
@@ -78,13 +80,13 @@ trait JsonIdentity[J] {
    * If this is a JSON object, then prepend the given value, otherwise, return a JSON object with only the given value.
    */
   def ->:(k: => JsonAssoc)(implicit l: JsonLike[J]): J =
-    error("") // todo withObject(k :: _)
+    withObject(o => o + (k._1, k._2))
 
   /**
    * If this is a JSON object, and the association is set, then prepend the given value, otherwise, return a JSON object with only the given value.
    */
   def ->?:(o: => Option[JsonAssoc])(implicit l: JsonLike[J]): J =
-    error("") // todo o.map(k => withObject(k :: _)).getOrElse(j)
+    o.map(->:(_)).getOrElse(j)
 
   /**
    * If this is a JSON array, then prepend the given value, otherwise, return a JSON array with only the given value.
@@ -209,13 +211,13 @@ trait JsonIdentity[J] {
    * Returns the object of this JSON value, or the empty object if this JSON value is not an object.
    */
   def objectOrEmpty(implicit l: JsonLike[J]): JsonObject =
-    error("") // todo objectOr(Nil)
+    objectOr(JsonObject.empty)
 
   /**
    * Returns the possible object map of this JSON value.
    */
   def objectMap(implicit l: JsonLike[J]): Option[JsonObjectMap] =
-    error("") // todo obj map (_.toMap)
+    obj map (_.toMap)
 
   /**
    * Returns the object map of this JSON value, or the given default if this JSON value is not an object.
@@ -229,12 +231,12 @@ trait JsonIdentity[J] {
    * Returns the object map of this JSON value, or the empty map if this JSON value is not an object.
    */
   def objectMapOrEmpty(implicit l: JsonLike[J]): JsonObjectMap =
-    objectMapOr(Map.empty)
+    objectMapOr(InsertionMap.empty)
 
   /**
    * Return the object keys if this JSON value is an object, otherwise, return the empty list.
    */
-  def objectFields(implicit l: JsonLike[J]): Option[Iterable[JsonField]] =
+  def objectFields(implicit l: JsonLike[J]): Option[List[JsonField]] =
     objectMap map (_.keys)
 
   /**
@@ -242,40 +244,40 @@ trait JsonIdentity[J] {
    *
    * @param f The default object map keys if this JSON value is not an object.
    */
-  def objectFieldsOr(f: => Iterable[JsonField])(implicit l: JsonLike[J]): Iterable[JsonField] =
+  def objectFieldsOr(f: => List[JsonField])(implicit l: JsonLike[J]): List[JsonField] =
     objectFields getOrElse f
 
   /**
    * Returns the object map keys of this JSON value, or the empty list if this JSON value is not an object.
    */
-  def objectFieldsOrEmpty(implicit l: JsonLike[J]): Iterable[JsonField] =
-    objectFieldsOr(Iterable.empty)
+  def objectFieldsOrEmpty(implicit l: JsonLike[J]): List[JsonField] =
+    objectFieldsOr(Nil)
 
   /**
    * Return the object values if this JSON value is an object, otherwise, return the empty list.
    */
-  def objectValues(implicit l: JsonLike[J]): Option[Iterable[Json]] =
-    objectMap map (_.values)
+  def objectValues(implicit l: JsonLike[J]): Option[List[Json]] =
+    objectMap map (_.toList map (_._2))
 
   /**
    * Returns the object map values of this JSON value, or the given default if this JSON value is not an object.
    *
    * @param k The default object map values if this JSON value is not an object.
    */
-  def objectValuesOr(k: => Iterable[Json])(implicit l: JsonLike[J]): Iterable[Json] =
+  def objectValuesOr(k: => List[Json])(implicit l: JsonLike[J]): List[Json] =
     objectValues getOrElse k
 
   /**
    * Returns the object map values of this JSON value, or the empty list if this JSON value is not an object.
    */
-  def objectValuesOrEmpty(implicit l: JsonLike[J]): Iterable[Json] =
-    objectValuesOr(Iterable.empty)
+  def objectValuesOrEmpty(implicit l: JsonLike[J]): List[Json] =
+    objectValuesOr(Nil)
 
   /**
    * Returns `true` if this is a JSON object which has the given field, `false` otherwise.
    */
   def hasField(f: => JsonField)(implicit l: JsonLike[J]): Boolean =
-    objectMap exists (_ isDefinedAt f)
+    objectMap exists (_ contains f)
 
   /**
    * Returns the possible value for the given JSON object field.

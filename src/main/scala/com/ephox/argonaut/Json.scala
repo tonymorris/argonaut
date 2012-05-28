@@ -84,12 +84,12 @@ trait Jsons {
   type JsonString = String
   type JsonField = String
   type JsonAssoc = (JsonField, Json)
-  type JsonObjectMap = Map[JsonField, Json]
+  type JsonObjectMap = scalaz.InsertionMap[JsonField, Json]
 
   type PossibleJson =
     Option[Json]
 
-  import scalaz._, PLens._, CostateT._
+  import scalaz._, Scalaz._, PLens._, CostateT._
 
   implicit def JsonJsonLike: JsonLike[Json] =
     new JsonLike[Json] {
@@ -167,5 +167,22 @@ trait Jsons {
 
       def jObject =
         x => Some(JObject(x))
+    }
+
+  import JsonIdentity._
+
+  implicit def JsonInstances: Equal[Json] with Show[Json] =
+    new Equal[Json] with Show[Json] {
+      def equal(a1: Json, a2: Json) =
+        a1 match {
+              case JNull      => a2.isNull
+              case JBool(b)   => a2.bool exists (_ == b)
+              case JNumber(n) => a2.number exists (_ == n)
+              case JString(s) => a2.string exists (_ == s)
+              case JArray(a)  => a2.array exists (_ === a)
+              case JObject(o) => a2.obj exists (_ === o)
+            }
+
+      def show(a: Json) = Show.showFromToString show a
     }
 }

@@ -204,45 +204,36 @@ trait EncodeJsons {
     )
 
   implicit def EitherEncodeJson[A, B](implicit ea: EncodeJson[A], eb: EncodeJson[B]): EncodeJson[Either[A, B]] =
-    error("") // todo
-  /*
     EncodeJson(j =>
       j.obj match {
         case None => encodeError(j, "[A, B]Either[A, B]")
-        case Some(o) => o match {
+        case Some(o) => o.toList match {
           case ("Left", v) :: Nil => ea(v) map (Left(_))
           case ("Right", v) :: Nil => eb(v) map (Right(_))
           case _ => encodeError(j, "[A, B]Either[A, B]")
         }
       })
-    */
 
   implicit def ValidationEncodeJson[E, A](implicit ea: EncodeJson[E], eb: EncodeJson[A]): EncodeJson[Validation[E, A]] =
-    error("") // todo
-  /*
     EncodeJson(j =>
       j.obj match {
         case None => encodeError(j, "[E, A]Validation[E, A]")
-        case Some(o) => o match {
+        case Some(o) => o.toList match {
           case ("Failure", v) :: Nil => ea(v) map (Validation.failure(_))
           case ("Success", v) :: Nil => eb(v) map (Validation.success(_))
           case _ => encodeError(j, "[E, A]Validation[E, A]")
         }
       })
-    */
 
   implicit def MapEncodeJson[V](implicit e: EncodeJson[V]): EncodeJson[Map[String, V]] =
-    error("") // todo
-  /*
     EncodeJson(j =>
       j.obj match {
         case None => encodeError(j, "[V]Map[String, V]")
-        case Some(js) => js.traverse[EncodeResult, (String, V)]{
+        case Some(js) => js.toList.traverse[EncodeResult, (String, V)]{
           case (k, v) => e(v) map ((k, _))
         } map (_.toMap)
       }
     )
-    */
 
   implicit def SetEncodeJson[A](implicit e: EncodeJson[A]): EncodeJson[Set[A]] =
     EncodeJson(j =>

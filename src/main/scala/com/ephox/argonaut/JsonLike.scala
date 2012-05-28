@@ -189,5 +189,5 @@ trait JsonLikes {
    */
   def jObjectMap[J](x: JsonObjectMap)(implicit l: JsonLike[J]): J =
     error("") // todo l.jObject(x.toList)
-  
+
 }

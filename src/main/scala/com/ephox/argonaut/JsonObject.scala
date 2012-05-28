@@ -5,17 +5,13 @@ import Json._
 import scalaz._, Scalaz._
 
 sealed trait JsonObject {
-  val fields: List[JsonField]
-  val toMap: Map[JsonField, Json]
-
-  /*
-  val toMap: Map[JsonField, Json]
+  val toMap: InsertionMap[JsonField, Json]
 
   def +(f: JsonField, j: Json): JsonObject =
-    JsonObject(toMap + ((f, j)))
+    JsonObject(toMap ^+^ (f, j))
 
   def -(f: JsonField): JsonObject =
-    JsonObject(toMap - f)
+    JsonObject(toMap ^-^ f)
 
   def ++(o: JsonObject): JsonObject =
     JsonObject(toMap ++ o.toMap)
@@ -24,7 +20,7 @@ sealed trait JsonObject {
     toMap get f
 
   def withJsons(k: Json => Json): JsonObject =
-    JsonObject(toMap mapValues k)
+    JsonObject(toMap map k)
 
   def isEmpty: Boolean =
     toMap.isEmpty
@@ -41,34 +37,26 @@ sealed trait JsonObject {
   def kleisli: Kleisli[Option, JsonField, Json] =
     Kleisli(toMap get _)
 
-  def fields: Set[JsonField] =
-    toMap.keySet
+  def fields: List[JsonField] =
+    toMap.keys
 
   def size: Int =
     toMap.size
-    */
 }
 
 object JsonObject extends JsonObjects {
-  /*
-  private[argonaut] def apply(x: Map[JsonField, Json]): JsonObject =
+  private[argonaut] def apply(x: InsertionMap[JsonField, Json]): JsonObject =
     new JsonObject {
       val toMap = x
     }
-    */
 }
 
 trait JsonObjects {
-  /*
-  def empty: JsonObject = new JsonObject {
-    val toMap = Map.empty[JsonField, Json]
-  }
+  def empty: JsonObject =
+    JsonObject(InsertionMap.empty)
 
   def jsonObjectL(f: JsonField): JsonObject @> PossibleJson =
-    Lens(o => Costate(_ match {
-      case None => JsonObject(o.toMap - f)
-      case Some(j) => JsonObject(o.toMap.updated(f, j))
-    }, o(f)))
+    InsertionMap.insertionMapL(f).xmapA(JsonObject(_), _.toMap)
 
   def jsonObjectPL(f: JsonField): JsonObject @?> Json =
     PLensT.somePLens compose ~jsonObjectL(f)
@@ -78,7 +66,7 @@ trait JsonObjects {
       def zero = empty
       def append(j1: JsonObject, j2: => JsonObject) = j1 ++ j2
       def equal(j1: JsonObject, j2: JsonObject) =
-        j1.fields union j2.fields forall (f => j1(f) === j2(f))
+        j1.toMap == j2.toMap
     }
-       */
+
 }
