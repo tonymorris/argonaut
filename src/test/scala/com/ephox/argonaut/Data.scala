@@ -18,12 +18,15 @@ object Data {
             yield jArray[Json](j)
     val o = for(n <- choose(0, 10);
                 j <- listOfN(n, arbitrary[(String, Json)]))
-            yield jObject[Json](j)
+            yield jObjectAssocList[Json](j)
 
     // FIX Would like to pump up the level of complex objects being generated, but it falls over sometimes.
     Arbitrary(frequency((10, n), (10, b), (10, m), (10, s), (1, a), (4, o)))
   }
-  
+
+  implicit def ArbitraryJsonObject: Arbitrary[JsonObject] =
+    Arbitrary(arbitrary[List[(JsonField, Json)]] map (as => JsonObject(scalaz.InsertionMap(as: _*))))
+
   case class SometimesNullString(s: String) {
     override def toString = s
   }

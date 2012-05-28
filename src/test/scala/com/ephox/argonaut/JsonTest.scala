@@ -39,7 +39,7 @@ object JsonTest extends Properties("Json") {
 
   property("Object prepend puts element on head") =
       forAll((j: Json, e: JsonAssoc) =>
-        !j.isObject || (e ->: j).obj.map(_.head) == Some(e))
+        !j.isObject || (e ->: j).obj.map(_.toList.head) == Some(e))
 
   property("Array prepend puts element on head") =
       forAll((j: Json, e: Json) =>

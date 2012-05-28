@@ -48,6 +48,6 @@ object PossibleJsonTest extends Properties("PossibleJson") {
 
   property("An object value isObject") =
       forAll((o: List[(String, Json)]) =>
-        jObject[PossibleJson](o).isObject)
+        jObjectAssocList[PossibleJson](o).isObject)
 
 }
