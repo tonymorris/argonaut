@@ -55,6 +55,9 @@ trait JsonObjects {
   def empty: JsonObject =
     JsonObject(InsertionMap.empty)
 
+  def single(f: JsonField, j: Json): JsonObject =
+    empty + (f, j)
+
   def jsonObjectL(f: JsonField): JsonObject @> PossibleJson =
     InsertionMap.insertionMapL(f).xmapA(JsonObject(_), _.toMap)
 

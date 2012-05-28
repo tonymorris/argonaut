@@ -43,13 +43,9 @@ trait JsonPrinters {
       printString,
       entries(_, "[", "]", recurse(_:Json)),
 
-      error("") // todo
-
-        /*
-      entries(_, "{", "}", {
+      x => entries(x.toList, "{", "}", {
         case (k, v) => printString(k) + colon + recurse(v)
       }: (((String, Json)) => String))
-      */
     )
   }
 }

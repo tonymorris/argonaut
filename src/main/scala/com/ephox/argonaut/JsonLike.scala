@@ -176,18 +176,18 @@ trait JsonLikes {
    * A JSON value that is an empty object.
    */
   def jEmptyObject[J](implicit l: JsonLike[J]): J =
-    error("") // todo l.jObject(Nil)
+    l.jObject(JsonObject.empty)
 
   /**
    * Returns a function that takes an association value and produces a JSON object that contains only that value.
    */
   def jSingleObject[J](k: JsonField, v: Json)(implicit l: JsonLike[J]): J =
-    error("") // todo l.jObject(List((k, v)))
+    l.jObject(JsonObject.single(k, v))
 
   /**
    * Construct a JSON value that is an object from an index.
    */
   def jObjectMap[J](x: JsonObjectMap)(implicit l: JsonLike[J]): J =
-    error("") // todo l.jObject(x.toList)
+    l.jObject(JsonObject(x))
 
 }
