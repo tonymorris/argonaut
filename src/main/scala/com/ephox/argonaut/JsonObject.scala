@@ -42,6 +42,9 @@ sealed trait JsonObject {
 
   def size: Int =
     toMap.size
+
+  override def toString: String =
+    "object[" + (toMap.toList map (Show[(JsonField, Json)] shows _) mkString ", ") + "]"
 }
 
 object JsonObject extends JsonObjects {
@@ -64,12 +67,14 @@ trait JsonObjects {
   def jsonObjectPL(f: JsonField): JsonObject @?> Json =
     PLensT.somePLens compose ~jsonObjectL(f)
 
-  implicit val JsonObjectInstances: Monoid[JsonObject] with Equal[JsonObject] =
-    new Monoid[JsonObject] with Equal[JsonObject] {
+  implicit val JsonObjectInstances: Monoid[JsonObject] with Equal[JsonObject] with Show[JsonObject] =
+    new Monoid[JsonObject] with Equal[JsonObject] with Show[JsonObject] {
       def zero = empty
       def append(j1: JsonObject, j2: => JsonObject) = j1 ++ j2
       def equal(j1: JsonObject, j2: JsonObject) =
-        j1.toMap == j2.toMap
+        j1.toMap === j2.toMap
+      def show(a: JsonObject) = Show.showFromToString show a
+
     }
 
 }
