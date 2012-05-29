@@ -187,6 +187,8 @@ private case class CObject(p: Parent, i: JsonObject, x: (JsonField, Json)) exten
 object Cursor extends Cursors
 
 trait Cursors {
+  // todo JsonLike instance
+
   /*
   def parentL: Cursor @?> Cursor =
     PLens(_.parent map (w => Costate(z => new Cursor {
