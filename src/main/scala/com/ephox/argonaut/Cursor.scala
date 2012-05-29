@@ -25,6 +25,7 @@ sealed trait Cursor {
 
   import JsonIdentity._
 
+  /** Returns the value currently referenced by this cursor. */
   def focus: Json =
     this match {
       case CNull(_) => jNull[Json]
@@ -35,6 +36,7 @@ sealed trait Cursor {
       case CObject(_, _, (_, j)) => j
     }
 
+  /** Returns the array/object context of the current focus. */
   def context: List[ContextElement] = {
     @annotation.tailrec
     def c(p: Parent, a: List[ContextElement]): List[ContextElement] =
@@ -157,6 +159,7 @@ sealed trait Cursor {
     }
   }
 
+  /** Unapplies the cursor to the top-level parent. */
   def unary_- : Json = {
     @annotation.tailrec
     def u(c: Cursor, j: Json): Json =
