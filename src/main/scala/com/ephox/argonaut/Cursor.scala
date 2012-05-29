@@ -83,12 +83,17 @@ sealed trait Cursor {
   }
          */
 }
-private case object CNull extends Cursor
-private case class CBool(b: Boolean) extends Cursor
-private case class CNumber(n: JsonNumber) extends Cursor
-private case class CString(s: String) extends Cursor
-private case class CArray(ls: List[Json], x: Json, rs: List[Json]) extends Cursor
-private case class CObject(i: JsonObject, ls: List[JsonField], x: (JsonField, Json), rs: List[JsonField]) extends Cursor
+private sealed trait Parent
+private case object NoParent extends Parent
+private case class CArrayParent(parent: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Parent
+private case class CObjectParent(parent: Parent, i: JsonObject, x: (JsonField, Json)) extends Parent
+
+private case class CNull(parent: Parent) extends Cursor
+private case class CBool(parent: Parent, b: Boolean) extends Cursor
+private case class CNumber(parent: Parent, n: JsonNumber) extends Cursor
+private case class CString(parent: Parent, s: String) extends Cursor
+private case class CArray(parent: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
+private case class CObject(parent: Parent, i: JsonObject, x: (JsonField, Json)) extends Cursor
 
 object Cursor extends Cursors
 
