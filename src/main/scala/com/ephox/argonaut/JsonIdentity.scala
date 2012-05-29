@@ -10,7 +10,7 @@ trait JsonIdentity[J] {
   import JsonLike._
   import JsonIdentity._
 
-  def asJson(implicit e: DecodeJson[J]): Json =
+  def decode(implicit e: DecodeJson[J]): Json =
     e(j)
 
   /**

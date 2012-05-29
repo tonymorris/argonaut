@@ -46,6 +46,12 @@ sealed trait Json {
     }
 
   /**
+   * Attempts to encode this JSON value to another data type.
+   */
+  def encode[A](implicit e: EncodeJson[A]): EncodeResult[A] =
+    e(this)
+
+  /**
    * Compute a `String` representation for this JSON value.
    */
   override def toString =
