@@ -63,6 +63,8 @@ sealed trait Cursor {
       case CObject(_, _, _) => None
     }
 
+  // todo leftn, rightn, start, end, findr, findlu
+
   /** Move the cursor right in a JSON array. */
   def right: Option[Cursor] =
     this match {
@@ -185,6 +187,8 @@ private case class CObject(p: Parent, i: JsonObject, x: (JsonField, Json)) exten
 object Cursor extends Cursors
 
 trait Cursors {
+  // todo JsonLike instance
+
   /*
   def parentL: Cursor @?> Cursor =
     PLens(_.parent map (w => Costate(z => new Cursor {
