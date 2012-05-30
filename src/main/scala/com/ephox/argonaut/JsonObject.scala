@@ -61,7 +61,7 @@ trait JsonObjects {
   def single(f: JsonField, j: Json): JsonObject =
     empty + (f, j)
 
-  def jsonObjectL(f: JsonField): JsonObject @> PossibleJson =
+  def jsonObjectL(f: JsonField): JsonObject @> Option[Json] =
     InsertionMap.insertionMapL(f).xmapA(JsonObject(_), _.toMap)
 
   def jsonObjectPL(f: JsonField): JsonObject @?> Json =

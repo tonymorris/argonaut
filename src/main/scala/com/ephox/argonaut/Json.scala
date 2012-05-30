@@ -92,9 +92,6 @@ trait Jsons {
   type JsonAssoc = (JsonField, Json)
   type JsonObjectMap = scalaz.InsertionMap[JsonField, Json]
 
-  type PossibleJson =
-    Option[Json]
-
   import scalaz._, Scalaz._, PLens._, CostateT._
 
   implicit def JsonJsonLike: JsonLike[Json] =
@@ -134,45 +131,6 @@ trait Jsons {
 
       def jObject =
         JObject
-    }
-
-  implicit def PossibleJsonJsonLike: JsonLike[PossibleJson] =
-    new JsonLike[PossibleJson] {
-      def isNull: PossibleJson => Boolean =
-        _.isEmpty
-
-      def jBoolL: PossibleJson @?> Boolean =
-        JsonLike.jBoolL[Json].option
-
-      def jNumberL: PossibleJson @?> JsonNumber =
-        JsonLike.jNumberL[Json].option
-
-      def jStringL: PossibleJson @?> JsonString =
-        JsonLike.jStringL[Json].option
-
-      def jArrayL: PossibleJson @?> JsonArray =
-        JsonLike.jArrayL[Json].option
-
-      def jObjectL: PossibleJson @?> JsonObject =
-        JsonLike.jObjectL[Json].option
-
-      def jNull =
-        Some(JNull)
-
-      def jBool =
-        x => Some(JBool(x))
-
-      def jNumber =
-        x => Some(JNumber(x))
-
-      def jString =
-        x => Some(JString(x))
-
-      def jArray =
-        x => Some(JArray(x))
-
-      def jObject =
-        x => Some(JObject(x))
     }
 
   import JsonIdentity._
