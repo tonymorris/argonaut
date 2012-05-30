@@ -2,7 +2,6 @@ package com.ephox
 package argonaut
 
 import scalaz._
-import JsonLike._
 import Json._
 import Lens._
 import CostateT._
@@ -28,10 +27,10 @@ sealed trait Cursor {
   /** Returns the value currently referenced by this cursor. */
   def focus: Json =
     this match {
-      case CNull(_) => jNull[Json]
-      case CBool(_, a) => jBool[Json](a)
-      case CNumber(_, n) => jNumber[Json](n)
-      case CString(_, s) => jString[Json](s)
+      case CNull(_) => jNull
+      case CBool(_, a) => jBool(a)
+      case CNumber(_, n) => jNumber(n)
+      case CString(_, s) => jString(s)
       case CArray(_, _, j, _) => j
       case CObject(_, _, (_, j)) => j
     }
@@ -145,12 +144,12 @@ sealed trait Cursor {
   def up: Option[Cursor] = {
     def unf: Json =
       this match {
-        case CNull(_) => jNull[Json]
-        case CBool(_, a) => jBool[Json](a)
-        case CNumber(_, n) => jNumber[Json](n)
-        case CString(_, s) => jString[Json](s)
-        case CArray(_, l, x, r) => jArray[Json](l.reverse ::: x :: r)
-        case CObject(_, i, (f, j)) => jObject[Json](i + (f, j))
+        case CNull(_) => jNull
+        case CBool(_, a) => jBool(a)
+        case CNumber(_, n) => jNumber(n)
+        case CString(_, s) => jString(s)
+        case CArray(_, l, x, r) => jArray(l.reverse ::: x :: r)
+        case CObject(_, i, (f, j)) => jObject(i + (f, j))
       }
     parent match {
       case NoParent => None
@@ -187,7 +186,6 @@ private case class CObject(p: Parent, i: JsonObject, x: (JsonField, Json)) exten
 object Cursor extends Cursors
 
 trait Cursors {
-  // todo JsonLike instance
 
   /*
   def parentL: Cursor @?> Cursor =
