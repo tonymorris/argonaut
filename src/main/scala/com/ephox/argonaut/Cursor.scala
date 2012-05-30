@@ -189,6 +189,15 @@ object Cursor extends Cursors
 trait Cursors {
   // todo JsonLike instance
 
+  // lenses
+  // upL: Cursor @?> Cursor
+  // leftsL: Cursor @?> List[Json]
+  // rightsL: Cursor @?> List[Json]
+  // focusL: Cursor @?> Json
+  // fieldL(k: JsonField): Cursor @> Option[Json]
+  // fieldPL(k: JsonField): Cursor @?> Json
+  
+
   /*
   def parentL: Cursor @?> Cursor =
     PLens(_.parent map (w => Costate(z => new Cursor {
