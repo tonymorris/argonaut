@@ -35,6 +35,12 @@ sealed trait Json {
     }
 
   /**
+   * Constructor a cursor from this JSON value.
+   */
+  def unary_+ : Option[Cursor] =
+    Cursor.cursor(this)
+
+  /**
    * Return `true` if this JSON value is `null`, otherwise, `false`.
    */
   def isNull: Boolean =
