@@ -393,12 +393,12 @@ sealed trait Json {
 }
 import Json._
 
-private case object JNull extends Json
-private case class JBool(b: Boolean) extends Json
-private case class JNumber(n: JsonNumber) extends Json
-private case class JString(s: String) extends Json
-private case class JArray(a: JsonArray) extends Json
-private case class JObject(o: JsonObject) extends Json
+private[argonaut] case object JNull extends Json
+private[argonaut] case class JBool(b: Boolean) extends Json
+private[argonaut] case class JNumber(n: JsonNumber) extends Json
+private[argonaut] case class JString(s: String) extends Json
+private[argonaut] case class JArray(a: JsonArray) extends Json
+private[argonaut] case class JObject(o: JsonObject) extends Json
 
 object Json extends Jsons
 

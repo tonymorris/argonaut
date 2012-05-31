@@ -254,6 +254,21 @@ private case class CObject(p: Parent, i: JsonObject, x: (JsonField, Json)) exten
 object Cursor extends Cursors
 
 trait Cursors {
+  def cursor(j: Json): Option[Cursor] =
+    j match {
+      case JNull      => Some(CNull(NoParent))
+      case JBool(b)   => Some(CBool(NoParent, b))
+      case JNumber(n) => Some(CNumber(NoParent, n))
+      case JString(s) => Some(CString(NoParent, s))
+      case JArray(a)  => a match {
+        case Nil => None
+        case h::t => Some(CArray(NoParent, Nil, h, t))
+      }
+      case JObject(o) => o.toList match {
+        case Nil => None
+        case (f, j)::_ => Some(CObject(NoParent, o, (f, j)))
+      }
+    }
 
   /*
   def parentL: Cursor @?> Cursor =
