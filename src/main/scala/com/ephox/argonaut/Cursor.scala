@@ -31,9 +31,25 @@ sealed trait Cursor {
       case CBool(_, a) => jBool(a)
       case CNumber(_, n) => jNumber(n)
       case CString(_, s) => jString(s)
-      case CArray(_, _, j, _) => j
+      case CArray(_, _, x, _) => x
       case CObject(_, _, (_, j)) => j
     }
+
+  /** Update the focus with the given function. */
+  def withFocus(k: Json => Json): Cursor =
+    parent match {
+      case NoParent => this
+      case CArrayParent(q, l, _, r) =>
+        CArray(q, l, k(focus), r)
+      case CObjectParent(q, i, (f, _)) => {
+        val n = k(focus)
+        CObject(q, i + (f, n), (f, n))
+      }
+    }
+
+  /** Set the focus to the given value. */
+  def :=(j: Json): Cursor =
+    withFocus(_ => j)
 
   /** Returns the array/object context of the current focus. */
   def context: List[ContextElement] = {
@@ -209,24 +225,14 @@ sealed trait Cursor {
     -\(0)
 
   /** Move the cursor up one step to the parent context. */
-  def up: Option[Cursor] = {
-    def unf: Json =
-      this match {
-        case CNull(_) => jNull
-        case CBool(_, a) => jBool(a)
-        case CNumber(_, n) => jNumber(n)
-        case CString(_, s) => jString(s)
-        case CArray(_, l, x, r) => jArray(l.reverse ::: x :: r)
-        case CObject(_, i, (f, j)) => jObject(i + (f, j))
-      }
+  def up: Option[Cursor] =
     parent match {
       case NoParent => None
       case CArrayParent(q, l, _, r) =>
-        Some(CArray(q, l, unf, r))
+        Some(CArray(q, l, focus, r))
       case CObjectParent(q, i, (f, _)) =>
-        Some(CObject(q, i, (f, unf)))
+        Some(CObject(q, i + (f, focus), (f, focus)))
     }
-  }
 
   /** Unapplies the cursor to the top-level parent. */
   def unary_- : Json = {
@@ -266,7 +272,7 @@ trait Cursors {
       }
       case JObject(o) => o.toList match {
         case Nil => None
-        case (f, j)::_ => Some(CObject(NoParent, o, (f, j)))
+        case (f, jj)::_ => Some(CObject(NoParent, o, (f, jj)))
       }
     }
 
