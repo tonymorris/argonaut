@@ -2,7 +2,6 @@ package com.ephox
 package argonaut
 
 import scalaz._
-import JsonLike._
 import Json._
 import Lens._
 import CostateT._
@@ -28,13 +27,29 @@ sealed trait Cursor {
   /** Returns the value currently referenced by this cursor. */
   def focus: Json =
     this match {
-      case CNull(_) => jNull[Json]
-      case CBool(_, a) => jBool[Json](a)
-      case CNumber(_, n) => jNumber[Json](n)
-      case CString(_, s) => jString[Json](s)
-      case CArray(_, _, j, _) => j
+      case CNull(_) => jNull
+      case CBool(_, a) => jBool(a)
+      case CNumber(_, n) => jNumber(n)
+      case CString(_, s) => jString(s)
+      case CArray(_, _, x, _) => x
       case CObject(_, _, (_, j)) => j
     }
+
+  /** Update the focus with the given function. */
+  def withFocus(k: Json => Json): Cursor =
+    parent match {
+      case NoParent => this
+      case CArrayParent(q, l, _, r) =>
+        CArray(q, l, k(focus), r)
+      case CObjectParent(q, i, (f, _)) => {
+        val n = k(focus)
+        CObject(q, i + (f, n), (f, n))
+      }
+    }
+
+  /** Set the focus to the given value. */
+  def :=(j: Json): Cursor =
+    withFocus(_ => j)
 
   /** Returns the array/object context of the current focus. */
   def context: List[ContextElement] = {
@@ -63,7 +78,75 @@ sealed trait Cursor {
       case CObject(_, _, _) => None
     }
 
-  // todo leftn, rightn, start, end, findr, findlu
+  /** Move the cursor left in a JSON array the given number of times. A negative value will move the cursor right. */
+  def -<-:(n: Int): Option[Cursor] =
+    if(n < 0)
+      :->-(-n)
+    else {
+      @annotation.tailrec
+      def r(x: Int, c: Option[Cursor]): Option[Cursor] =
+        if (x == 0)
+          c
+        else
+          r(x - 1, c flatMap (_.left))
+      r(n, Some(this))
+    }
+
+  /** Move the cursor right in a JSON array the given number of times. A negative value will move the cursor left. */
+  def :->-(n: Int): Option[Cursor] =
+    if(n > 0)
+      -<-:(-n)
+    else {
+      @annotation.tailrec
+      def r(x: Int, c: Option[Cursor]): Option[Cursor] =
+        if (x == 0)
+          c
+        else
+          r(x + 1, c flatMap (_.right))
+      r(n, Some(this))
+    }
+
+  /** Move the cursor left in a JSON array until the given predicate matches the focus. */
+  def ?<-:(p: Json => Boolean): Option[Cursor] = {
+    @annotation.tailrec
+    def r(c: Option[Cursor]): Option[Cursor] =
+      c match {
+        case None => None
+        case Some(w) => r(if(p(w.focus)) Some(w) else w.left)
+      }
+
+    r(left)
+  }
+
+  /** Move the cursor right in a JSON array until the given predicate matches the focus. */
+  def :->?(p: Json => Boolean): Option[Cursor] = {
+    @annotation.tailrec
+    def r(c: Option[Cursor]): Option[Cursor] =
+      c match {
+        case None => None
+        case Some(w) => r(if(p(w.focus)) Some(w) else w.right)
+      }
+
+    r(right)
+  }
+
+  def first: Option[Cursor] =
+    this match {
+      case CArray(p, l, x, r) => {
+        val h::t = l.reverse ::: x :: r
+        Some(CArray(p, Nil, h, t))
+      }
+      case _ => None
+    }
+
+  def last: Option[Cursor] =
+    this match {
+      case CArray(p, l, x, r) => {
+        val h::t = r.reverse ::: x :: l
+        Some(CArray(p, t, h, Nil))
+      }
+      case _ => None
+    }
 
   /** Move the cursor right in a JSON array. */
   def right: Option[Cursor] =
@@ -79,8 +162,8 @@ sealed trait Cursor {
       case CObject(_, _, _) => None
     }
 
-  /** Move the cursor to the given key in a JSON object */
-  def field(q: JsonField): Option[Cursor] =
+  /** Move the cursor to the given sibling key in a JSON object */
+  def --(q: JsonField): Option[Cursor] =
     this match {
       case CNull(_) => None
       case CBool(_, _) => None
@@ -91,7 +174,7 @@ sealed trait Cursor {
     }
 
   /** Move the cursor down to a JSON object at the given field. */
-  def ->>-(q: JsonField): Option[Cursor] =
+  def --\(q: JsonField): Option[Cursor] =
     this match {
       case CNull(_) => None
       case CBool(_, _) => None
@@ -102,7 +185,7 @@ sealed trait Cursor {
     }
 
   /** Move the cursor down to a JSON array at the given index. */
-  def ->-(n: Int): Option[Cursor] = {
+  def -\(n: Int): Option[Cursor] = {
     @annotation.tailrec
     def right0(
                  z: Option[(List[Json], Json, List[Json])]
@@ -139,27 +222,17 @@ sealed trait Cursor {
 
   /** Move the cursor down to a JSON array at the first element. */
   def downArray: Option[Cursor] =
-    ->-(0)
+    -\(0)
 
   /** Move the cursor up one step to the parent context. */
-  def up: Option[Cursor] = {
-    def unf: Json =
-      this match {
-        case CNull(_) => jNull[Json]
-        case CBool(_, a) => jBool[Json](a)
-        case CNumber(_, n) => jNumber[Json](n)
-        case CString(_, s) => jString[Json](s)
-        case CArray(_, l, x, r) => jArray[Json](l.reverse ::: x :: r)
-        case CObject(_, i, (f, j)) => jObject[Json](i + (f, j))
-      }
+  def up: Option[Cursor] =
     parent match {
       case NoParent => None
       case CArrayParent(q, l, _, r) =>
-        Some(CArray(q, l, unf, r))
+        Some(CArray(q, l, focus, r))
       case CObjectParent(q, i, (f, _)) =>
-        Some(CObject(q, i, (f, unf)))
+        Some(CObject(q, i + (f, focus), (f, focus)))
     }
-  }
 
   /** Unapplies the cursor to the top-level parent. */
   def unary_- : Json = {
@@ -187,7 +260,21 @@ private case class CObject(p: Parent, i: JsonObject, x: (JsonField, Json)) exten
 object Cursor extends Cursors
 
 trait Cursors {
-  // todo JsonLike instance
+  def cursor(j: Json): Option[Cursor] =
+    j match {
+      case JNull      => Some(CNull(NoParent))
+      case JBool(b)   => Some(CBool(NoParent, b))
+      case JNumber(n) => Some(CNumber(NoParent, n))
+      case JString(s) => Some(CString(NoParent, s))
+      case JArray(a)  => a match {
+        case Nil => None
+        case h::t => Some(CArray(NoParent, Nil, h, t))
+      }
+      case JObject(o) => o.toList match {
+        case Nil => None
+        case (f, jj)::_ => Some(CObject(NoParent, o, (f, jj)))
+      }
+    }
 
   // lenses
   // upL: Cursor @?> Cursor

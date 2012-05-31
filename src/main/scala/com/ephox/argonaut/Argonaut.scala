@@ -9,7 +9,6 @@ DecodeJsons with
 EncodeJsons with
 Jsons with
 JsonIdentitys with
-JsonLikes with
 JsonPrinters with
 JsonQuerys with
 StringWraps

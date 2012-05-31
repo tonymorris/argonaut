@@ -13,9 +13,6 @@ sealed trait JsonObject {
   def -(f: JsonField): JsonObject =
     JsonObject(toMap ^-^ f)
 
-  def ++(o: JsonObject): JsonObject =
-    JsonObject(toMap ++ o.toMap)
-
   def apply(f: JsonField): Option[Json] =
     toMap get f
 
@@ -61,16 +58,14 @@ trait JsonObjects {
   def single(f: JsonField, j: Json): JsonObject =
     empty + (f, j)
 
-  def jsonObjectL(f: JsonField): JsonObject @> PossibleJson =
+  def jsonObjectL(f: JsonField): JsonObject @> Option[Json] =
     InsertionMap.insertionMapL(f).xmapA(JsonObject(_), _.toMap)
 
   def jsonObjectPL(f: JsonField): JsonObject @?> Json =
     PLensT.somePLens compose ~jsonObjectL(f)
 
-  implicit val JsonObjectInstances: Monoid[JsonObject] with Equal[JsonObject] with Show[JsonObject] =
-    new Monoid[JsonObject] with Equal[JsonObject] with Show[JsonObject] {
-      def zero = empty
-      def append(j1: JsonObject, j2: => JsonObject) = j1 ++ j2
+  implicit val JsonObjectInstances: Equal[JsonObject] with Show[JsonObject] =
+    new Equal[JsonObject] with Show[JsonObject] {
       def equal(j1: JsonObject, j2: JsonObject) =
         j1.toMap === j2.toMap
       def show(a: JsonObject) = Show.showFromToString show a
