@@ -6,6 +6,21 @@ import Json._
 import Lens._
 import CostateT._
 
+/*
+sealed trait Cursor
+private case class CJson(p: Parent, c: Context, j: Json) extends Cursor
+private case class CArray(p: Parent, c: Context, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
+private case class CObject(p: Parent, c: Context, i: JsonObject, x: (JsonField, Json)) extends Cursor
+
+private sealed trait Parent
+private case object PNone extends Parent
+private case class PArrayParent(p: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Parent
+private case class PObject(p: Parent, i: JsonObject, x: (JsonField, Json)) extends Parent
+
+type Context = List[ContextElement]
+
+*/
+
 // todo
 sealed trait ContextElement
 private case class ArrayContext(j: Json) extends ContextElement
