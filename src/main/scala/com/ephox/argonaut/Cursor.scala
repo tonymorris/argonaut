@@ -147,7 +147,7 @@ sealed trait Cursor {
     }
 
   /** Move the cursor to the given sibling key in a JSON object */
-  def field(q: JsonField): Option[Cursor] =
+  def --(q: JsonField): Option[Cursor] =
     this match {
       case CNull(_) => None
       case CBool(_, _) => None
