@@ -3,7 +3,7 @@ package com.ephox.argonaut
 import com.ephox.argonaut._, Argonaut._
 
 object Demo {
-
+/*
   def d(j: PossibleJson) {
     import Json._
 
@@ -40,7 +40,7 @@ object Demo {
   def demo(j: List[String]) {
     j map (_.pparse) foreach (d(_))
   }
-
+*/
   def main(args: Array[String]) {
     val jsons = List(
       "true"
@@ -70,6 +70,6 @@ object Demo {
       """
     )
 
-    demo(jsons)
+    // demo(jsons)
   }
 }

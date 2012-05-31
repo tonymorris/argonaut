@@ -1,7 +1,7 @@
 package com.ephox
 package argonaut
 
-import scalaz.InsertionMap
+import scalaz._, Scalaz._
 
 /**
  * A data type representing possible <a href="http://www.json.org/">JSON</a> values.
