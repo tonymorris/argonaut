@@ -153,6 +153,7 @@ sealed trait Cursor {
   def --\(q: JsonField): Option[Cursor] =
     this match {
       case CJson(_, _, _) => None
+      // todo delete ObjectMap functions in Json.scala
       case CArray(p, c, l1, j, r1) => todo Some(PArray(p, l1, j, r2))
       case CObject(p, c, o, (f, j)) => todo Some(PCobject(p, o, (f, j)))
     }
