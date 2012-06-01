@@ -6,59 +6,44 @@ import Json._
 import Lens._
 import CostateT._
 
-/*
-sealed trait Cursor
-private case class CJson(p: Parent, c: Context, j: Json) extends Cursor
-private case class CArray(p: Parent, c: Context, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
-private case class CObject(p: Parent, c: Context, i: JsonObject, x: (JsonField, Json)) extends Cursor
-
-private sealed trait Parent
-private case object PNone extends Parent
-private case class PArrayParent(p: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Parent
-private case class PObject(p: Parent, i: JsonObject, x: (JsonField, Json)) extends Parent
-
-type Context = List[ContextElement]
-
-*/
-
-// todo
-sealed trait ContextElement
-private case class ArrayContext(j: Json) extends ContextElement
-private case class ObjectContext(f: JsonField, j: Json) extends ContextElement
-
 sealed trait Cursor {
   private def parent: Parent =
     this match {
-      case CNull(p) => p
-      case CBool(p, _) => p
-      case CNumber(p, _) => p
-      case CString(p, _) => p
-      case CArray(p, _, _, _) => p
-      case CObject(p, _, _) => p
+      case CJson(p, _, _) => p
+      case CArray(p, _, _, _, _) => p
+      case CObject(p, _, _, _) => p
     }
 
-  import JsonIdentity._
+  /** Returns the array/object context of the current focus. */
+  def context: Context =
+    this match {
+      case CJson(_, c, _) => c
+      case CArray(_, c, _, _, _) => c
+      case CObject(_, c, _, _) => c
+    }
 
-  /** Returns the value currently referenced by this cursor. */
+  /** Set the focus to the given value. */
   def focus: Json =
     this match {
-      case CNull(_) => jNull
-      case CBool(_, a) => jBool(a)
-      case CNumber(_, n) => jNumber(n)
-      case CString(_, s) => jString(s)
-      case CArray(_, _, x, _) => x
-      case CObject(_, _, (_, j)) => j
+      case CJson(_, _, j) => j
+      case CArray(_, _, _, j, _) => j
+      case CObject(_, _, _, (_, j)) => j
     }
 
   /** Update the focus with the given function. */
   def withFocus(k: Json => Json): Cursor =
-    parent match {
-      case NoParent => this
-      case CArrayParent(q, l, _, r) =>
-        CArray(q, l, k(focus), r)
-      case CObjectParent(q, i, (f, _)) => {
-        val n = k(focus)
-        CObject(q, i + (f, n), (f, n))
+    this match {
+      case CJson(p, c, j) => {
+        val jj = k(j)
+        CJson(p, jj @: c, jj)
+      }
+      case CArray(p, c, l, j, r) => {
+        val jj = k(j)
+        CArray(p, jj @: c, l, k(j), r)
+      }
+      case CObject(p, c, o, (f, j)) => {
+        val jj = k(j)
+        CObject(p, jj @: c, o + (f, jj), (f, jj))
       }
     }
 
@@ -66,31 +51,42 @@ sealed trait Cursor {
   def :=(j: Json): Cursor =
     withFocus(_ => j)
 
-  /** Returns the array/object context of the current focus. */
-  def context: List[ContextElement] = {
-    @annotation.tailrec
-    def c(p: Parent, a: List[ContextElement]): List[ContextElement] =
-      p match {
-        case NoParent => a
-        case CArrayParent(q, _, j, _) => c(q, ArrayContext(j)::a)
-        case CObjectParent(q, _, (f, j)) => c(q, ObjectContext(f, j)::a)
-      }
-
-    c(parent, Nil)
-  }
-
   /** Move the cursor left in a JSON array. */
   def left: Option[Cursor] =
     this match {
-      case CNull(_) => None
-      case CBool(_, _) => None
-      case CNumber(_, _) => None
-      case CString(_, _) => None
-      case CArray(p, l, x, r) => l match {
+      case CArray(p, c, l, j, r) => l match {
         case Nil => None
-        case h::t => Some(CArray(p, t, h, x::r))
+        case h::t => Some(CArray(p, h @: c, t, h, j::r))
       }
-      case CObject(_, _, _) => None
+      case _ => None
+    }
+
+  /** Move the cursor right in a JSON array. */
+  def right: Option[Cursor] =
+    this match {
+      case CArray(p, c, l, j, r) => r match {
+        case Nil => None
+        case h::t => Some(CArray(p, h @: c, j::t, h, r))
+      }
+      case _ => None
+    }
+
+  def first: Option[Cursor] =
+    this match {
+      case CArray(p, c, l, j, r) => {
+        val h::t = l.reverse ::: j :: r
+        Some(CArray(p, h @: c, Nil, h, t))
+      }
+      case _ => None
+    }
+
+  def last: Option[Cursor] =
+    this match {
+      case CArray(p, c, l, x, r) => {
+        val h::t = r.reverse ::: x :: l
+        Some(CArray(p, h @: c, t, h, Nil))
+      }
+      case _ => None
     }
 
   /** Move the cursor left in a JSON array the given number of times. A negative value will move the cursor right. */
@@ -145,37 +141,79 @@ sealed trait Cursor {
     r(right)
   }
 
-  def first: Option[Cursor] =
+  /** Move the cursor to the given sibling key in a JSON object */
+  def --(q: JsonField): Option[Cursor] =
     this match {
-      case CArray(p, l, x, r) => {
-        val h::t = l.reverse ::: x :: r
-        Some(CArray(p, Nil, h, t))
-      }
+      case CObject(p, c, o, (f, j)) =>
+        o(q) map (jj => CObject(p, (q, jj) @@: c, o, (q, jj)))
       case _ => None
     }
 
-  def last: Option[Cursor] =
-    this match {
-      case CArray(p, l, x, r) => {
-        val h::t = r.reverse ::: x :: l
-        Some(CArray(p, t, h, Nil))
-      }
-      case _ => None
-    }
+  /** Move the cursor down to a JSON object at the given field. */
+  def --\(q: JsonField): Option[Cursor] =
+    error("")
 
-  /** Move the cursor right in a JSON array. */
-  def right: Option[Cursor] =
-    this match {
-      case CNull(_) => None
-      case CBool(_, _) => None
-      case CNumber(_, _) => None
-      case CString(_, _) => None
-      case CArray(p, l, x, r) => r match {
-        case Nil => None
-        case h::t => Some(CArray(p, x::l, h, t))
+  /** Move the cursor down to a JSON array at the given index. */
+  def -\(n: Int): Option[Cursor] =
+    error("")
+
+  /** Move the cursor down to a JSON array at the first element. */
+  def downArray: Option[Cursor] =
+    -\(0)
+
+  /** Move the cursor up one step to the parent context. */
+  def up: Option[Cursor] = {
+    lazy val (pp, cc, jj) =
+      this match {
+        case CJson(p, c, j) => (p, c, j)
+        case CArray(p, c, l1, j, r1) => (p, c, jArray(l1.reverse ::: j :: r1))
+        case CObject(p, c, o, _) => (p, c, jObject(o))
       }
-      case CObject(_, _, _) => None
+    pp match {
+      case PNone => None
+      case PArray(q, l, _, r) =>
+        Some(CArray(q, cc.unsafeup, l, jj, r))
+      case PObject(q, oo, (f, _)) =>
+        Some(CObject(q, cc.unsafeup, oo + (f, jj), (f, jj)))
     }
+  }
+
+  /** Unapplies the cursor to the top-level parent. */
+  def unary_- : Json = {
+    @annotation.tailrec
+    def u(c: Cursor, j: Json): Json =
+      c.up match {
+        case None => j
+        case Some(e) => u(e, e.focus)
+      }
+    u(this, focus)
+  }
+}
+private case class CJson(p: Parent, c: Context, j: Json) extends Cursor
+private case class CArray(p: Parent, c: Context, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
+private case class CObject(p: Parent, c: Context, i: JsonObject, x: (JsonField, Json)) extends Cursor
+
+private sealed trait Parent
+private case object PNone extends Parent
+private case class PArray(p: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Parent
+private case class PObject(p: Parent, i: JsonObject, x: (JsonField, Json)) extends Parent
+
+object Cursor extends Cursors {
+  def apply(j: Json): Cursor =
+    CJson(PNone, Context.empty, j)
+}
+
+trait Cursors {
+
+}
+
+// todo
+
+/*
+sealed trait Cursor {
+
+  import JsonIdentity._
+
 
   /** Move the cursor to the given sibling key in a JSON object */
   def --(q: JsonField): Option[Cursor] =
@@ -239,26 +277,6 @@ sealed trait Cursor {
   def downArray: Option[Cursor] =
     -\(0)
 
-  /** Move the cursor up one step to the parent context. */
-  def up: Option[Cursor] =
-    parent match {
-      case NoParent => None
-      case CArrayParent(q, l, _, r) =>
-        Some(CArray(q, l, focus, r))
-      case CObjectParent(q, i, (f, _)) =>
-        Some(CObject(q, i + (f, focus), (f, focus)))
-    }
-
-  /** Unapplies the cursor to the top-level parent. */
-  def unary_- : Json = {
-    @annotation.tailrec
-    def u(c: Cursor, j: Json): Json =
-      c.up match {
-        case None => j
-        case Some(e) => u(e, e.focus)
-      }
-    u(this, focus)
-  }
 }
 private sealed trait Parent
 private case object NoParent extends Parent
@@ -334,3 +352,4 @@ trait Cursors {
     }, w.rights))
             */
 }
+       */
