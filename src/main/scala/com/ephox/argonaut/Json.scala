@@ -244,30 +244,10 @@ sealed trait Json {
     objectOr(JsonObject.empty)
 
   /**
-   * Returns the possible object map of this JSON value.
-   */
-  def objectMap: Option[JsonObjectMap] =
-    obj map (_.toMap)
-
-  /**
-   * Returns the object map of this JSON value, or the given default if this JSON value is not an object.
-   *
-   * @param m The default object map if this JSON value is not an object.
-   */
-  def objectMapOr(m: => JsonObjectMap): JsonObjectMap =
-    objectMap getOrElse m
-
-  /**
-   * Returns the object map of this JSON value, or the empty map if this JSON value is not an object.
-   */
-  def objectMapOrEmpty: JsonObjectMap =
-    objectMapOr(InsertionMap.empty)
-
-  /**
    * Return the object keys if this JSON value is an object, otherwise, return the empty list.
    */
   def objectFields: Option[List[JsonField]] =
-    objectMap map (_.keys)
+    obj map (_.fields)
 
   /**
    * Returns the object map keys of this JSON value, or the given default if this JSON value is not an object.
@@ -287,7 +267,7 @@ sealed trait Json {
    * Return the object values if this JSON value is an object, otherwise, return the empty list.
    */
   def objectValues: Option[List[Json]] =
-    objectMap map (_.toList map (_._2))
+    obj map (_.values)
 
   /**
    * Returns the object map values of this JSON value, or the given default if this JSON value is not an object.
@@ -307,13 +287,13 @@ sealed trait Json {
    * Returns `true` if this is a JSON object which has the given field, `false` otherwise.
    */
   def hasField(f: => JsonField): Boolean =
-    objectMap exists (_ contains f)
+    obj exists (_ ?? f)
 
   /**
    * Returns the possible value for the given JSON object field.
    */
   def field(f: => JsonField): Option[Json] =
-    objectMap flatMap (_ get f)
+    obj flatMap (_(f))
 
   /**
    * Returns the value for the given JSON object field if this is an object with the given field, otherwise, returns the default..

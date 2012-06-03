@@ -25,6 +25,9 @@ sealed trait JsonObject {
   def isNotEmpty: Boolean =
     !isEmpty
 
+  def ??(f: JsonField): Boolean =
+    toMap contains f
+
   def toList: List[(JsonField, Json)] =
     toMap.toList
 
