@@ -157,13 +157,17 @@ sealed trait Cursor {
       case CObject(p, c, o, (f, j)) => error("") // todo Some(PCobject(p, o, (f, j)))
     }
 
+  /** Move the cursor down to a JSON array at the first element satisfying the given predicate. */
+  def -\(p: Json => Boolean): Option[Cursor] =
+    error("")
+
   /** Move the cursor down to a JSON array at the given index. */
-  def -\(n: Int): Option[Cursor] =
+  def =\(n: Int): Option[Cursor] =
     error("")
 
   /** Move the cursor down to a JSON array at the first element. */
   def downArray: Option[Cursor] =
-    -\(0)
+    =\(0)
 
   /** Move the cursor up one step to the parent context. */
   def up: Option[Cursor] = {
