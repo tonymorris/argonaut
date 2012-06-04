@@ -6,7 +6,6 @@ import Json._
 import ContextElement._
 import Lens._
 import CostateT._
-import argonaut.Json
 
 sealed trait Cursor {
   /*
@@ -151,7 +150,7 @@ sealed trait Cursor {
     this match {
       case CJson(p, j) =>
         // this.focus.obj.flatMap(o => o(q) map (jj => CObject((p, o), false, (q, jj))))
-        j.obj flatMap (o => o(q) map (jj => CObject((p, o), (q, jj))))
+        j.obj flatMap (o => o(q) map (jj => CObject((~p, o), (q, jj))))
       case p@CObject(_, (_, j)) =>
         j.obj flatMap (o => o(q) map (jj => CObject((Some(p), o), (q, jj))))
       case p@CArray(_, _, j, _) =>
@@ -164,7 +163,7 @@ sealed trait Cursor {
       case CJson(p, j) =>
         j.array flatMap (_ match {
           case Nil => None
-          case h::t => Some(CArray(p, Nil, h, t))
+          case h::t => Some(CArray(~p, Nil, h, t))
         })
       case p@CObject(_, (_, j)) =>
         j.array flatMap (_ match {
@@ -190,13 +189,14 @@ sealed trait Cursor {
   /** Move the cursor up one step to the parent context. */
   def up: Option[Cursor] =
     this match {
-      case CJson(p, j) => p map (_ match {
-        case CJson(pp, jj) => error("this will never happen1") // todo
-        case CArray(ggp, ll, _, rr) => CJson(ggp, jArray(ll.reverse ::: j :: rr))
-        case CObject((ggp, oo), (ff, _)) => CJson(ggp, jObject(oo + (ff, j)) /* todo InsertionMap combinator */)
-      })
-      case CArray(gp, l, j, r) => Some(CJson(gp, jArray(l.reverse ::: j :: r)))
-      case CObject((gp, o), (f, j)) => Some(CJson(gp, jObject(o + (f, j))))
+      case CJson(p, j) =>
+        p match {
+          case PNone => None
+          case PArray(ggp, ll, _, rr) => Some(CJson(CJsonParent.fromCursor(ggp), jArray(ll.reverse ::: j :: rr)))
+          case PObject((ggp, oo), (ff, _)) => Some(CJson(CJsonParent.fromCursor(ggp), jObject(oo + (ff, j))))
+        }
+      case CArray(gp, l, j, r) => Some(CJson(CJsonParent.fromCursor(gp), jArray(l.reverse ::: j :: r)))
+      case CObject((gp, o), (f, j)) => Some(CJson(CJsonParent.fromCursor(gp), jObject(o + (f, j))))
     }
 
   /** Unapplies the cursor to the top-level parent. */
@@ -223,13 +223,36 @@ private case object PNone extends Parent
 private case class PArray(p: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Parent
 private case class PObject(p: Parent, i: JsonObject, x: (JsonField, Json)) extends Parent
  */
-private case class CJson(p: Option[Cursor], j: Json) extends Cursor
+private case class CJson(p: CJsonParent, j: Json) extends Cursor
 private case class CArray(gp: Option[Cursor], ls: List[Json], x: Json, rs: List[Json]) extends Cursor
 private case class CObject(p: (Option[Cursor], JsonObject), x: (JsonField, Json)) extends Cursor
 
+private[argonaut] sealed trait CJsonParent {
+  def unary_~ : Option[Cursor] =
+    this match {
+      case PNone => None
+      case PArray(gp, ls, x, rs) => Some(CArray(gp, ls, x, rs))
+      case PObject(p, x) => Some(CObject(p, x))
+    }
+}
+private case object PNone extends CJsonParent
+private case class PArray(gp: Option[Cursor], ls: List[Json], x: Json, rs: List[Json]) extends CJsonParent
+private case class PObject(p: (Option[Cursor], JsonObject), x: (JsonField, Json)) extends CJsonParent
+
+object CJsonParent {
+  def fromCursor(q: Option[Cursor]): CJsonParent =
+    q match {
+      case None => PNone
+      case Some(c) => c match {
+        case CJson(_, _) => PNone
+        case CArray(gp, ls, x, rs) => PArray(gp, ls, x, rs)
+        case CObject(p, x) => PObject(p, x)
+      }
+    }
+}
 object Cursor extends Cursors {
   def apply(j: Json): Cursor =
-    CJson(None, j)
+    CJson(PNone, j)
 }
 
 trait Cursors {
