@@ -8,21 +8,12 @@ import Lens._
 import CostateT._
 
 sealed trait Cursor {
-  /*
-  /** Returns the array/object context of the current focus. */
-  def context: Context =
-    this match {
-      case CJson(_, c, _) => c
-      case CArray(_, c, _, _, _) => c
-      case CObject(_, c, _, _) => c
-    }
-       */
   /** Set the focus to the given value. */
   def focus: Json =
     this match {
       case CJson(_, j) => j
       case CArray(_, _, j, _) => j
-      case CObject(_, (_, j)) => j
+      case CObject(_, _, (_, j)) => j
     }
 
   /** Update the focus with the given function. */
@@ -36,9 +27,9 @@ sealed trait Cursor {
         val jj = k(j)
         CArray(p, l, k(jj), r)
       }
-      case CObject((p, x), (f, j)) => {
+      case CObject(p, x, (f, j)) => {
         val jj = k(j)
-        CObject((p, x), (f, jj))
+        CObject(p, x, (f, jj))
       }
     }
 
@@ -65,21 +56,21 @@ sealed trait Cursor {
       }
       case _ => None
     }
-          /*
+  
   def first: Option[Cursor] =
     this match {
-      case CArray(p, c, l, j, r) => {
+      case CArray(gp, l, j, r) => {
         val h::t = l.reverse ::: j :: r
-        Some(CArray(p, h @: c, Nil, h, t))
+        Some(CArray(gp, Nil, h, t))
       }
       case _ => None
     }
-
+  
   def last: Option[Cursor] =
     this match {
-      case CArray(p, c, l, x, r) => {
+      case CArray(p, l, x, r) => {
         val h::t = r.reverse ::: x :: l
-        Some(CArray(p, h @: c, t, h, Nil))
+        Some(CArray(p, t, h, Nil))
       }
       case _ => None
     }
@@ -135,27 +126,29 @@ sealed trait Cursor {
 
     r(right)
   }
-     */
+  
   /** Move the cursor to the given sibling key in a JSON object */
   def --(q: JsonField): Option[Cursor] =
     this match {
-      case CObject((gp, o), (f, j)) =>
-        o(q) map (jj => CObject((gp, o + (f, j)), (q, jj)))
+      case CObject(gp, o, (f, j)) =>
+        o(q) map (jj => CObject(gp, o + (f, j), (q, jj)))
       case _ => None
     }
 
   // todo code repetition
   /** Move the cursor down to a JSON object at the given field. */
-  def --\(q: JsonField): Option[Cursor] =
+  def --\(q: JsonField): Option[Cursor] = {
+    def r(c: Option[Cursor], j: Json): Option[Cursor] =
+      j.obj flatMap (o => o(q) map (jj => CObject(c, o, (q, jj))))
     this match {
       case CJson(p, j) =>
-        // this.focus.obj.flatMap(o => o(q) map (jj => CObject((p, o), false, (q, jj))))
-        j.obj flatMap (o => o(q) map (jj => CObject((~p, o), (q, jj))))
-      case p@CObject(_, (_, j)) =>
-        j.obj flatMap (o => o(q) map (jj => CObject((Some(p), o), (q, jj))))
+        r(~p, j)
+      case p@CObject(_, _, (_, j)) =>
+        r(Some(p), j)
       case p@CArray(_, _, j, _) =>
-        j.obj flatMap (o => o(q) map (jj => CObject((Some(p), o), (q, jj))))
+        r(Some(p), j)
     }
+  }
 
   /** Move the cursor down to a JSON array at the first element. */
   def downArray: Option[Cursor] =
@@ -165,7 +158,7 @@ sealed trait Cursor {
           case Nil => None
           case h::t => Some(CArray(~p, Nil, h, t))
         })
-      case p@CObject(_, (_, j)) =>
+      case p@CObject(_, _, (_, j)) =>
         j.array flatMap (_ match {
           case Nil => None
           case h::t => Some(CArray(Some(p), Nil, h, t))
@@ -177,7 +170,6 @@ sealed trait Cursor {
         })
     }
 
-   /*
   /** Move the cursor down to a JSON array at the first element satisfying the given predicate. */
   def -\(p: Json => Boolean): Option[Cursor] =
     downArray flatMap (_ :->? p)
@@ -185,7 +177,7 @@ sealed trait Cursor {
   /** Move the cursor down to a JSON array at the given index. */
   def =\(n: Int): Option[Cursor] =
     downArray flatMap (_ :->- n)
-       */
+
   /** Move the cursor up one step to the parent context. */
   def up: Option[Cursor] =
     this match {
@@ -193,10 +185,10 @@ sealed trait Cursor {
         p match {
           case PNone => None
           case PArray(ggp, ll, _, rr) => Some(CJson(CJsonParent.fromCursor(ggp), jArray(ll.reverse ::: j :: rr)))
-          case PObject((ggp, oo), (ff, _)) => Some(CJson(CJsonParent.fromCursor(ggp), jObject(oo + (ff, j))))
+          case PObject(ggp, oo, (ff, _)) => Some(CJson(CJsonParent.fromCursor(ggp), jObject(oo + (ff, j))))
         }
       case CArray(gp, l, j, r) => Some(CJson(CJsonParent.fromCursor(gp), jArray(l.reverse ::: j :: r)))
-      case CObject((gp, o), (f, j)) => Some(CJson(CJsonParent.fromCursor(gp), jObject(o + (f, j))))
+      case CObject(gp, o, (f, j)) => Some(CJson(CJsonParent.fromCursor(gp), jObject(o + (f, j))))
     }
 
   /** Unapplies the cursor to the top-level parent. */
@@ -225,19 +217,19 @@ private case class PObject(p: Parent, i: JsonObject, x: (JsonField, Json)) exten
  */
 private case class CJson(p: CJsonParent, j: Json) extends Cursor
 private case class CArray(gp: Option[Cursor], ls: List[Json], x: Json, rs: List[Json]) extends Cursor
-private case class CObject(p: (Option[Cursor], JsonObject), x: (JsonField, Json)) extends Cursor
+private case class CObject(p: Option[Cursor], o: JsonObject, x: (JsonField, Json)) extends Cursor
 
 private[argonaut] sealed trait CJsonParent {
   def unary_~ : Option[Cursor] =
     this match {
       case PNone => None
       case PArray(gp, ls, x, rs) => Some(CArray(gp, ls, x, rs))
-      case PObject(p, x) => Some(CObject(p, x))
+      case PObject(p, o, x) => Some(CObject(p, o, x))
     }
 }
 private case object PNone extends CJsonParent
 private case class PArray(gp: Option[Cursor], ls: List[Json], x: Json, rs: List[Json]) extends CJsonParent
-private case class PObject(p: (Option[Cursor], JsonObject), x: (JsonField, Json)) extends CJsonParent
+private case class PObject(p: Option[Cursor], o: JsonObject, x: (JsonField, Json)) extends CJsonParent
 
 object CJsonParent {
   def fromCursor(q: Option[Cursor]): CJsonParent =
@@ -246,7 +238,7 @@ object CJsonParent {
       case Some(c) => c match {
         case CJson(_, _) => PNone
         case CArray(gp, ls, x, rs) => PArray(gp, ls, x, rs)
-        case CObject(p, x) => PObject(p, x)
+        case CObject(p, o, x) => PObject(p, o, x)
       }
     }
 }
