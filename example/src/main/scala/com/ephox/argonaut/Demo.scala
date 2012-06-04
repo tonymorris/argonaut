@@ -36,12 +36,69 @@ object Demo {
     
     println
   }
-
-  def demo(j: List[String]) {
-    j map (_.pparse) foreach (d(_))
-  }
 */
+  def demo(j: List[String]) =
+    j map (_.pparse)
+
   def main(args: Array[String]) {
+    val j =
+      """
+        {
+          "abc" :
+            {
+              "def" : 7
+            },
+          "ghi" :
+            {
+              "ata" : null,
+              "jkl" :
+                {
+                  "mno" : "argo"
+                }
+            },
+          "pqr" : false,
+          "operator": "is",
+          "values": [
+                      "cat"
+                    , "dog"
+                    , "rabbit"
+                    ],
+          "xyz" : 24
+        }
+      """
+
+    /*
+
+     1. parse
+     2. create cursor                        CJson(None, jObject(...))
+     3. down to "ghi"                        CObject((None, jObject(...)), ("ghi", jObject(...))
+     4. set focus to false                   CObject((None, jObject(...)), ("ghi", jBoolean(false))
+     5. release cursor                       CJson(None, jObject(...))
+
+
+
+     */
+    val r =
+      j.pparse
+    val c =
+      r flatMap (k => {
+        val k2 = +k // create cursor
+        val k3 = k2 --\ "values"
+        val k33 = k3 flatMap (_.downArray)
+        val k4 = k33 map (_ := jBool(false))
+        val k5 = k4 map (-_)
+        k5
+        /*
+        // +k --\ "ghi" map (_ := jBool(false)) map (-_)
+        val rr = +k --\ "ghi" map (_ := jBool(false)) map (-_)
+        println("rr: " + rr)
+        rr
+        */
+      })
+
+    println(c map (JsonPrinter.pretty(_)))
+
+    /*
     val jsons = List(
       "true"
     , "[ true ]"
@@ -70,6 +127,7 @@ object Demo {
       """
     )
 
-    // demo(jsons)
+    println(demo(jsons))
+    */
   }
 }
