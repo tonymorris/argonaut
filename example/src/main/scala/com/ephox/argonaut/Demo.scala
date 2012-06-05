@@ -59,7 +59,7 @@ object Demo {
           "pqr" : false,
           "operator": "is",
           "values": [
-                      "cat"
+                      ["cat", "lol"]
                     , "dog"
                     , "rabbit"
                     ],
