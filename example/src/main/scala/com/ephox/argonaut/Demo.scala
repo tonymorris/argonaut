@@ -3,9 +3,6 @@ package com.ephox.argonaut
 import com.ephox.argonaut._, Argonaut._
 
 object Demo {
-  def demo(j: List[String]) =
-    j map (_.pparse)
-
   def main(args: Array[String]) {
     val j =
       """
