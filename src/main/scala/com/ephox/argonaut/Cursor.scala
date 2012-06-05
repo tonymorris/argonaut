@@ -178,70 +178,33 @@ sealed trait Cursor {
   def =\(n: Int): Option[Cursor] =
     downArray flatMap (_ :->- n)
 
-  /** Move the cursor up one step to the parent context. */
-  def up: Option[Cursor] =
+  private def atCJsonP[X]: Either[Json, Cursor] =
     this match {
       case CJson(p, j) =>
         p match {
-          case PNone => None
-          case PArray(ggp, ll, _, rr) => Some(CJson(CJsonParent.fromCursor(ggp), jArray(ll.reverse ::: j :: rr)))
-          case PObject(ggp, oo, (ff, _)) => Some(CJson(CJsonParent.fromCursor(ggp), jObject(oo + (ff, j))))
+          case PNone => Left(j)
+          case PArray(ggp, ll, _, rr) => Right(CJson(CJsonParent.fromCursor(ggp), jArray(ll.reverse ::: j :: rr)))
+          case PObject(ggp, oo, (ff, _)) => Right(CJson(CJsonParent.fromCursor(ggp), jObject(oo + (ff, j))))
         }
-      case CArray(gp, l, j, r) => Some(CJson(CJsonParent.fromCursor(gp), jArray(l.reverse ::: j :: r)))
-      case CObject(gp, o, (f, j)) => Some(CJson(CJsonParent.fromCursor(gp), jObject(o + (f, j))))
+      case CArray(gp, l, j, r) => Right(CJson(CJsonParent.fromCursor(gp), jArray(l.reverse ::: j :: r)))
+      case CObject(gp, o, (f, j)) => Right(CJson(CJsonParent.fromCursor(gp), jObject(o + (f, j))))
     }
+
+  /** Move the cursor up one step to the parent context. */
+  def up: Option[Cursor] =
+    atCJsonP.right.toOption
 
   /** Unapplies the cursor to the top-level parent. */
   def unary_- : Json = {
     @annotation.tailrec
     def u(c: Cursor): Json =
-      c match {
-        case CJson(p, j) =>
-          p match {
-            case PNone => j
-            case PArray(ggp, ll, _, rr) => u(CJson(CJsonParent.fromCursor(ggp), jArray(ll.reverse ::: j :: rr)))
-            case PObject(ggp, oo, (ff, _)) => u(CJson(CJsonParent.fromCursor(ggp), jObject(oo + (ff, j))))
-          }
-        case CArray(gp, l, j, r) => u(CJson(CJsonParent.fromCursor(gp), jArray(l.reverse ::: j :: r)))
-        case CObject(gp, o, (f, j)) => u(CJson(CJsonParent.fromCursor(gp), jObject(o + (f, j))))
-      }
-
-/*
-      c.up match { // todo nicer
-        case None => c match {
-          case CJson(_, jj) => jj
-          case _ => error("this will never happen2")
-        }
-        case Some(e) => u(e)
-      }
-*/
-    u(this)
-  }
-
-  /** Unapplies the cursor to the top-level parent. */
-  def uunary_- : Json = {
-    @annotation.tailrec
-    def u(c: Cursor): Json =
-      c.up match { // todo nicer
-        case None => c match {
-          case CJson(_, jj) => jj
-          case _ => error("this will never happen2")
-        }
-        case Some(e) => u(e)
+      c.atCJsonP match {
+        case Left(j) => j
+        case Right(cc) => u(cc)
       }
     u(this)
   }
 }
-/*
-private case class CJson(p: Parent, c: Context, j: Json) extends Cursor
-private case class CArray(p: Parent, c: Context, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
-private case class CObject(p: Parent, c: Context, o: JsonObject, x: (JsonField, Json)) extends Cursor
-
-private sealed class Parent
-private case object PNone extends Parent
-private case class PArray(p: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Parent
-private case class PObject(p: Parent, i: JsonObject, x: (JsonField, Json)) extends Parent
- */
 private case class CJson(p: CJsonParent, j: Json) extends Cursor
 private case class CArray(gp: Option[Cursor], ls: List[Json], x: Json, rs: List[Json]) extends Cursor
 private case class CObject(p: Option[Cursor], o: JsonObject, x: (JsonField, Json)) extends Cursor
