@@ -13,7 +13,7 @@ sealed trait Cursor {
     this match {
       case CJson(j) => j
       case CArray(_, _, j, _) => j
-      case CObject(_, _, (_, j)) => j
+      case CObject(_, _, (_, j, _)) => j
     }
 
   /** Update the focus with the given function. */
@@ -23,9 +23,9 @@ sealed trait Cursor {
         CJson(k(j))
       case CArray(p, l, j, r) => 
         CArray(p, l, k(j), r)
-      case CObject(p, x, (f, j)) => { 
+      case CObject(p, x, (f, j, _)) => { 
         val jj = k(j)
-        CObject(p, x + (f, jj), (f, jj))
+        CObject(p, x + (f, jj), (f, jj, true))
       }
     }
 
@@ -132,14 +132,14 @@ sealed trait Cursor {
   /** Move the cursor to the given sibling key in a JSON object */
   def --(q: JsonField): Option[Cursor] =
     this match {
-      case CObject(p, o, (f, j)) =>
-        o(q) map (jj => CObject(p, o, (q, jj)))
+      case CObject(p, o, (f, j, u)) => // todo update
+        o(q) map (jj => CObject(p, o, (q, jj, u)))
       case _ => None
     }
 
   /** Move the cursor down to a JSON object at the given field. */
   def --\(q: JsonField): Option[Cursor] =
-    focus.obj flatMap (o => o(q) map (jj => CObject(this, o, (q, jj))))
+    focus.obj flatMap (o => o(q) map (jj => CObject(this, o, (q, jj, false))))
 
   /** Move the cursor down to a JSON array at the first element. */
   def downArray: Option[Cursor] =
@@ -185,13 +185,13 @@ sealed trait Cursor {
         Left(j)
       case CArray(p, l, j, r) =>
         Right(p := jArray(l.reverse ::: (if(dropfocus) r else j :: r)))
-      case CObject(p, o, (f, _)) =>
+      case CObject(p, o, (f, _, _)) => // todo update
         Right(p := jObject(if(dropfocus) o - f else o))
     }
 }
 private case class CJson(j: Json) extends Cursor
 private case class CArray(p: Cursor, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
-private case class CObject(p: Cursor, o: JsonObject, x: (JsonField, Json)) extends Cursor
+private case class CObject(p: Cursor, o: JsonObject, x: (JsonField, Json, Boolean)) extends Cursor
 
 object Cursor extends Cursors {
   def apply(j: Json): Cursor =
