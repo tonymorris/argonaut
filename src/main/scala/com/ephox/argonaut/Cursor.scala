@@ -44,9 +44,9 @@ sealed trait Cursor {
   /** Move the cursor left in a JSON array. */
   def left: Option[Cursor] =
     this match {
-      case CArray(u, gp, l, j, r) => l match {
+      case CArray(u, p, l, j, r) => l match {
         case Nil => None
-        case h::t => Some(CArray(u, gp, t, h, j::r))
+        case h::t => Some(CArray(u, p, t, h, j::r))
       }
       case _ => None
     }
@@ -54,9 +54,9 @@ sealed trait Cursor {
   /** Move the cursor right in a JSON array. */
   def right: Option[Cursor] =
     this match {
-      case CArray(u, gp, l, j, r) => r match {
+      case CArray(u, p, l, j, r) => r match {
         case Nil => None
-        case h::t => Some(CArray(u, gp, j::l, h, t))
+        case h::t => Some(CArray(u, p, j::l, h, t))
       }
       case _ => None
     }
@@ -64,9 +64,9 @@ sealed trait Cursor {
   /** Move the cursor to the first in a JSON array. */
   def first: Option[Cursor] =
     this match {
-      case CArray(u, gp, l, j, r) => {
+      case CArray(u, p, l, j, r) => {
         val h::t = l.reverse ::: j :: r
-        Some(CArray(u, gp, Nil, h, t))
+        Some(CArray(u, p, Nil, h, t))
       }
       case _ => None
     }
@@ -136,8 +136,8 @@ sealed trait Cursor {
   /** Move the cursor to the given sibling key in a JSON object */
   def --(q: JsonField): Option[Cursor] =
     this match {
-      case CObject(u, gp, o, (f, j)) =>
-        o(q) map (jj => CObject(u, gp, o + (f, j), (q, jj)))
+      case CObject(u, p, o, (f, j)) =>
+        o(q) map (jj => CObject(u, p, o + (f, j), (q, jj)))
       case _ => None
     }
 
@@ -199,7 +199,7 @@ sealed trait Cursor {
   }
 }
 private case class CJson(u: Boolean, j: Json) extends Cursor
-private case class CArray(u: Boolean, gp: Cursor, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
+private case class CArray(u: Boolean, p: Cursor, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
 private case class CObject(u: Boolean, p: Cursor, o: JsonObject, x: (JsonField, Json)) extends Cursor
 
 object Cursor extends Cursors {
