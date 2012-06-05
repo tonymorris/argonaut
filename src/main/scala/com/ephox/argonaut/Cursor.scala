@@ -139,10 +139,10 @@ sealed trait Cursor {
     this match {
       case CJson(p, j) =>
         (~p, j)
-      case p@CObject(_, _, (_, j)) =>
-        (Some(p), j)
-      case p@CArray(_, _, j, _) =>
-        (Some(p), j)
+      case CObject(_, _, (_, j)) =>
+        (Some(this), j)
+      case CArray(_, _, j, _) =>
+        (Some(this), j)
     }
 
   /** Move the cursor down to a JSON object at the given field. */
@@ -178,8 +178,8 @@ sealed trait Cursor {
       case CJson(p, _) =>
         p match {
           case PNone => None
-          case PArray(ggp, ll, j, rr) => Some(CJson(CJsonParent.fromCursor(ggp), j))
-          case PObject(ggp, oo, (ff, j)) => Some(CJson(CJsonParent.fromCursor(ggp), j))
+          case PArray(ggp, ll, j, rr) => error("never reach")
+          case PObject(ggp, oo, (ff, j)) => error("never reach")
         }
       case CArray(gp, l, _, r) => Some(CJson(CJsonParent.fromCursor(gp), jArray(l.reverse ::: r)))
       case CObject(gp, o, (f, _)) => Some(CJson(CJsonParent.fromCursor(gp), jObject(o - f)))
