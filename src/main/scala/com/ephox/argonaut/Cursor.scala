@@ -166,41 +166,37 @@ sealed trait Cursor {
 
   /** Deletes the JSON value at focus and moves up to parent (alias for `unary_!`). */
   def delete: Option[Cursor] =
-    this match {
-      case CJson(_) => None
-      case CArray(p, l, _, r) =>
-        Some(p updatedtrueset jArray(l.reverse ::: r))
-      case CObject(p, o, (f, _)) =>
-        Some(p updatedtrueset jObject(o - f))
-    }
+    go(true).right.toOption
 
   /** Move the cursor up one step to the parent context. */
   def up: Option[Cursor] =
-    atCJsonP.right.toOption
+    go(false).right.toOption
 
   /** Unapplies the cursor to the top-level parent. */
   def unary_- : Json = {
     @annotation.tailrec
     def u(c: Cursor): Json =
-      c.atCJsonP match {
+      c go false match {
         case Left(j) => j
         case Right(cc) => u(cc)
       }
     u(this)
   }
 
-  // todo
-  private def updatedtrueset(j: Json): Cursor =
-    withFocus(_ => j)
+  private def go[X](dropfocus: Boolean): Either[Json, Cursor] = {
+    // todo set updated flag in constructor
+    def updatedtrueset(c: Cursor, j: Json): Cursor =
+      c withFocus (_ => j)
 
-  private def atCJsonP[X]: Either[Json, Cursor] =
     this match {
-      case CJson(j) => Left(j)
+      case CJson(j) =>
+        Left(j)
       case CArray(p, l, j, r) =>
-        Right(p updatedtrueset jArray(l.reverse ::: j :: r))
+        Right(updatedtrueset(p, jArray(l.reverse ::: (if(dropfocus) r else j :: r))))
       case CObject(p, o, (f, j)) =>
-        Right(p updatedtrueset jObject(o + (f, j)))
+        Right(updatedtrueset(p, jObject(if(dropfocus) o - f else o + (f, j))))
     }
+  }
 }
 private case class CJson(j: Json) extends Cursor
 private case class CArray(gp: Cursor, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
