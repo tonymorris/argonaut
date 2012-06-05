@@ -168,6 +168,19 @@ sealed trait Cursor {
   def =\(n: Int): Option[Cursor] =
     downArray flatMap (_ :->- n)
 
+  /** Deletes the JSON value at focus and moves up to parent. */
+  def unary_! : Option[Cursor] =
+    this match {
+      case CJson(p, _) =>
+        p match {
+          case PNone => None
+          case PArray(ggp, ll, j, rr) => Some(CJson(CJsonParent.fromCursor(ggp), j))
+          case PObject(ggp, oo, (ff, j)) => Some(CJson(CJsonParent.fromCursor(ggp), j))
+        }
+      case CArray(gp, l, _, r) => Some(CJson(CJsonParent.fromCursor(gp), jArray(l.reverse ::: r)))
+      case CObject(gp, o, (f, _)) => Some(CJson(CJsonParent.fromCursor(gp), jObject(o - f)))
+    }
+
   private def atCJsonP[X]: Either[Json, Cursor] =
     this match {
       case CJson(p, j) =>
