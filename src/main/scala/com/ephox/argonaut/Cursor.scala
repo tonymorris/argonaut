@@ -195,6 +195,33 @@ sealed trait Cursor {
   def unary_- : Json = {
     @annotation.tailrec
     def u(c: Cursor): Json =
+      c match {
+        case CJson(p, j) =>
+          p match {
+            case PNone => j
+            case PArray(ggp, ll, _, rr) => u(CJson(CJsonParent.fromCursor(ggp), jArray(ll.reverse ::: j :: rr)))
+            case PObject(ggp, oo, (ff, _)) => u(CJson(CJsonParent.fromCursor(ggp), jObject(oo + (ff, j))))
+          }
+        case CArray(gp, l, j, r) => u(CJson(CJsonParent.fromCursor(gp), jArray(l.reverse ::: j :: r)))
+        case CObject(gp, o, (f, j)) => u(CJson(CJsonParent.fromCursor(gp), jObject(o + (f, j))))
+      }
+
+/*
+      c.up match { // todo nicer
+        case None => c match {
+          case CJson(_, jj) => jj
+          case _ => error("this will never happen2")
+        }
+        case Some(e) => u(e)
+      }
+*/
+    u(this)
+  }
+
+  /** Unapplies the cursor to the top-level parent. */
+  def uunary_- : Json = {
+    @annotation.tailrec
+    def u(c: Cursor): Json =
       c.up match { // todo nicer
         case None => c match {
           case CJson(_, jj) => jj
