@@ -11,20 +11,22 @@ sealed trait Cursor {
   /** Set the focus to the given value. */
   def focus: Json =
     this match {
-      case CJson(_, j) => j
-      case CArray(_, _, _, j, _) => j
-      case CObject(_, _, _, (_, j)) => j
+      case CJson(j) => j
+      case CArray(_, _, j, _) => j
+      case CObject(_, _, (_, j)) => j
     }
 
   /** Update the focus with the given function. */
   def withFocus(k: Json => Json): Cursor =
     this match {
-      case CJson(_, j) =>
-        CJson(true, k(j))
-      case CArray(_, p, l, j, r) => 
-        CArray(true, p, l, k(j), r)
-      case CObject(_, p, x, (f, j)) => 
-        CObject(true, p, x, (f, k(j)))
+      case CJson(j) =>
+        CJson(k(j))
+      case CArray(p, l, j, r) => 
+        CArray(p, l, k(j), r)
+      case CObject(p, x, (f, j)) => { 
+        val jj = k(j)
+        CObject(p, x + (f, jj), (f, jj))
+      }
     }
 
   /** Set the focus to the given value (alias for `:=`). */
@@ -38,9 +40,9 @@ sealed trait Cursor {
   /** Move the cursor left in a JSON array. */
   def left: Option[Cursor] =
     this match {
-      case CArray(_, p, l, j, r) => l match {
+      case CArray(p, l, j, r) => l match {
         case Nil => None
-        case h::t => Some(CArray(false, p, t, h, j::r))
+        case h::t => Some(CArray(p, t, h, j::r))
       }
       case _ => None
     }
@@ -48,9 +50,9 @@ sealed trait Cursor {
   /** Move the cursor right in a JSON array. */
   def right: Option[Cursor] =
     this match {
-      case CArray(_, p, l, j, r) => r match {
+      case CArray(p, l, j, r) => r match {
         case Nil => None
-        case h::t => Some(CArray(false, p, j::l, h, t))
+        case h::t => Some(CArray(p, j::l, h, t))
       }
       case _ => None
     }
@@ -58,9 +60,9 @@ sealed trait Cursor {
   /** Move the cursor to the first in a JSON array. */
   def first: Option[Cursor] =
     this match {
-      case CArray(_, p, l, j, r) => {
+      case CArray(p, l, j, r) => {
         val h::t = l.reverse ::: j :: r
-        Some(CArray(false, p, Nil, h, t))
+        Some(CArray(p, Nil, h, t))
       }
       case _ => None
     }
@@ -68,9 +70,9 @@ sealed trait Cursor {
   /** Move the cursor to the last in a JSON array. */
   def last: Option[Cursor] =
     this match {
-      case CArray(_, p, l, x, r) => {
+      case CArray(p, l, x, r) => {
         val h::t = r.reverse ::: x :: l
-        Some(CArray(false, p, t, h, Nil))
+        Some(CArray(p, t, h, Nil))
       }
       case _ => None
     }
@@ -130,20 +132,20 @@ sealed trait Cursor {
   /** Move the cursor to the given sibling key in a JSON object */
   def --(q: JsonField): Option[Cursor] =
     this match {
-      case CObject(_, p, o, (f, j)) =>
-        o(q) map (jj => CObject(false, p, o + (f, j), (q, jj)))
+      case CObject(p, o, (f, j)) =>
+        o(q) map (jj => CObject(p, o, (q, jj)))
       case _ => None
     }
 
   /** Move the cursor down to a JSON object at the given field. */
   def --\(q: JsonField): Option[Cursor] =
-    focus.obj flatMap (o => o(q) map (jj => CObject(false, this, o, (q, jj))))
+    focus.obj flatMap (o => o(q) map (jj => CObject(this, o, (q, jj))))
 
   /** Move the cursor down to a JSON array at the first element. */
   def downArray: Option[Cursor] =
     focus.array flatMap (_ match {
       case Nil => None
-      case h::t => Some(CArray(false, this, Nil, h, t))
+      case h::t => Some(CArray(this, Nil, h, t))
     })
 
   /** Move the cursor down to a JSON array at the first element satisfying the given predicate. */
@@ -160,52 +162,40 @@ sealed trait Cursor {
 
   /** Deletes the JSON value at focus and moves up to parent (alias for `unary_!`). */
   def delete: Option[Cursor] =
-    go(true, _ => false).right.toOption
+    go(true).right.toOption
 
   /** Move the cursor up one step to the parent context. */
   def up: Option[Cursor] =
-    go(false, u => u).right.toOption
+    go(false).right.toOption
 
   /** Unapplies the cursor to the top-level parent. */
   def unary_- : Json = {
     @annotation.tailrec
     def u(c: Cursor): Json =
-      c go (false, _ => false) match {
+      c go false match {
         case Left(j) => j
         case Right(cc) => u(cc)
       }
     u(this)
   }
 
-  private def go[X](dropfocus: Boolean, k: Boolean => Boolean): Either[Json, Cursor] = {
-    // todo set updated flag in constructor
-    def updatedtrueset(c: Cursor, j: Json): Cursor =
-      this match {
-        case CJson(u, _) => 
-          CJson(k(u), j)
-        case CArray(u, p, l, _, r) => 
-          CArray(k(u), p, l, j, r)
-        case CObject(u, p, x, (f, _)) => 
-          CObject(k(u), p, x, (f, j))
-      }
-
+  private def go[X](dropfocus: Boolean): Either[Json, Cursor] = 
     this match {
-      case CJson(_, j) =>
+      case CJson(j) =>
         Left(j)
-      case CArray(u, p, l, j, r) =>
-        Right(updatedtrueset(p, jArray(l.reverse ::: (if(dropfocus) r else j :: r))))
-      case CObject(u, p, o, (f, j)) =>
-        Right(updatedtrueset(p, jObject(if(dropfocus) o - f else o + (f, j))))
+      case CArray(p, l, j, r) =>
+        Right(p := jArray(l.reverse ::: (if(dropfocus) r else j :: r)))
+      case CObject(p, o, (f, _)) =>
+        Right(p := jObject(if(dropfocus) o - f else o))
     }
-  }
 }
-private case class CJson(u: Boolean, j: Json) extends Cursor
-private case class CArray(u: Boolean, p: Cursor, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
-private case class CObject(u: Boolean, p: Cursor, o: JsonObject, x: (JsonField, Json)) extends Cursor
+private case class CJson(j: Json) extends Cursor
+private case class CArray(p: Cursor, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
+private case class CObject(p: Cursor, o: JsonObject, x: (JsonField, Json)) extends Cursor
 
 object Cursor extends Cursors {
   def apply(j: Json): Cursor =
-    CJson(false, j)
+    CJson(j)
 }
 
 trait Cursors {
