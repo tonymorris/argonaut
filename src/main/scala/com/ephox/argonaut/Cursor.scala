@@ -52,7 +52,7 @@ sealed trait Cursor {
     this match {
       case CArray(gp, l, j, r) => r match {
         case Nil => None
-        case h::t => Some(CArray(gp, j::t, h, r))
+        case h::t => Some(CArray(gp, j::l, h, t))
       }
       case _ => None
     }
@@ -168,8 +168,12 @@ sealed trait Cursor {
   def =\(n: Int): Option[Cursor] =
     downArray flatMap (_ :->- n)
 
-  /** Deletes the JSON value at focus and moves up to parent. */
+  /** Deletes the JSON value at focus and moves up to parent (alias for `delete`). */
   def unary_! : Option[Cursor] =
+    delete
+
+  /** Deletes the JSON value at focus and moves up to parent (alias for `unary_!`). */
+  def delete: Option[Cursor] =
     this match {
       case CJson(p, _) =>
         p match {
