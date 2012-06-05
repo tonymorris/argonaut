@@ -32,6 +32,7 @@ object Demo {
           "xyz" : 24
         }
       """
+
     val c =
       j.pparse flatMap (k =>
         +k --\ "values" flatMap (_.downArray) map (_ := jBool(false)) map (-_)
