@@ -135,40 +135,30 @@ sealed trait Cursor {
       case _ => None
     }
 
-  // todo code repetition
-  /** Move the cursor down to a JSON object at the given field. */
-  def --\(q: JsonField): Option[Cursor] = {
-    def r(c: Option[Cursor], j: Json): Option[Cursor] =
-      j.obj flatMap (o => o(q) map (jj => CObject(c, o, (q, jj))))
+  private def pcursorf: (Option[Cursor], Json) =
     this match {
       case CJson(p, j) =>
-        r(~p, j)
+        (~p, j)
       case p@CObject(_, _, (_, j)) =>
-        r(Some(p), j)
+        (Some(p), j)
       case p@CArray(_, _, j, _) =>
-        r(Some(p), j)
+        (Some(p), j)
     }
+
+  /** Move the cursor down to a JSON object at the given field. */
+  def --\(q: JsonField): Option[Cursor] = {
+    val (c, j) = pcursorf
+    j.obj flatMap (o => o(q) map (jj => CObject(c, o, (q, jj))))
   }
 
   /** Move the cursor down to a JSON array at the first element. */
-  def downArray: Option[Cursor] =
-    this match {
-      case CJson(p, j) =>
-        j.array flatMap (_ match {
-          case Nil => None
-          case h::t => Some(CArray(~p, Nil, h, t))
-        })
-      case p@CObject(_, _, (_, j)) =>
-        j.array flatMap (_ match {
-          case Nil => None
-          case h::t => Some(CArray(Some(p), Nil, h, t))
-        })
-      case p@CArray(_, _, j, _) =>
-        j.array flatMap (_ match {
-          case Nil => None
-          case h::t => Some(CArray(Some(p), Nil, h, t))
-        })
-    }
+  def downArray: Option[Cursor] = {
+    val (c, j) = pcursorf
+    j.array flatMap (_ match {
+      case Nil => None
+      case h::t => Some(CArray(c, Nil, h, t))
+    })
+  }
 
   /** Move the cursor down to a JSON array at the first element satisfying the given predicate. */
   def -\(p: Json => Boolean): Option[Cursor] =
@@ -241,108 +231,6 @@ trait Cursors {
 
 }
 
-// todo
-
-/*
-sealed trait Cursor {
-
-  import JsonIdentity._
-
-
-  /** Move the cursor to the given sibling key in a JSON object */
-  def --(q: JsonField): Option[Cursor] =
-    this match {
-      case CNull(_) => None
-      case CBool(_, _) => None
-      case CNumber(_, _) => None
-      case CString(_, _) => None
-      case CArray(_, _, _, _) => None
-      case CObject(p, i, _) => i(q) map (j => CObject(p, i, (q, j)))
-    }
-
-  /** Move the cursor down to a JSON object at the given field. */
-  def --\(q: JsonField): Option[Cursor] =
-    this match {
-      case CNull(_) => None
-      case CBool(_, _) => None
-      case CNumber(_, _) => None
-      case CString(_, _) => None
-      case CArray(p, l, x, r) => x.obj flatMap (o => o(q) map (w => CObject(CArrayParent(p, l, x, r), o, (q, w))))
-      case CObject(p, i, v) => v._2.obj flatMap (o => o(q) map (w => CObject(CObjectParent(p, i, v), o, (q, w))))
-    }
-
-  /** Move the cursor down to a JSON array at the given index. */
-  def -\(n: Int): Option[Cursor] = {
-    @annotation.tailrec
-    def right0(
-                 z: Option[(List[Json], Json, List[Json])]
-               , x: Int
-             ): Option[(List[Json], Json, List[Json])] =
-      if(x == 0)
-        z
-      else
-        right0(z flatMap {
-          case (l1, x1, r1) => r1 match {
-            case Nil => None
-            case h::t => Some((x1::l1, h, t))
-          }
-        }, x - 1)
-    this match {
-      case CNull(_) => None
-      case CBool(_, _) => None
-      case CNumber(_, _) => None
-      case CString(_, _) => None
-      case CArray(p, l, x, r) => x.array flatMap {
-        case Nil => None
-        case h::t => right0(Some(Nil, h, t), n) map {
-          case (l1, x1, r1) => CArray(CArrayParent(p, l, x, r), l1, x1, r1)
-        }
-      }
-      case CObject(p, i, v) => v._2.array flatMap {
-        case Nil => None
-        case h::t => right0(Some(Nil, h, t), n) map {
-          case (l1, x1, r1) => CArray(CObjectParent(p, i, v), l1, x1, r1)
-        }
-      }
-    }
-  }
-
-  /** Move the cursor down to a JSON array at the first element. */
-  def downArray: Option[Cursor] =
-    -\(0)
-
-}
-private sealed trait Parent
-private case object NoParent extends Parent
-private case class CArrayParent(p: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Parent
-private case class CObjectParent(p: Parent, i: JsonObject, x: (JsonField, Json)) extends Parent
-
-private case class CNull(p: Parent) extends Cursor
-private case class CBool(p: Parent, b: Boolean) extends Cursor
-private case class CNumber(p: Parent, n: JsonNumber) extends Cursor
-private case class CString(p: Parent, s: String) extends Cursor
-private case class CArray(p: Parent, ls: List[Json], x: Json, rs: List[Json]) extends Cursor
-private case class CObject(p: Parent, i: JsonObject, x: (JsonField, Json)) extends Cursor
-
-object Cursor extends Cursors
-
-trait Cursors {
-  def cursor(j: Json): Option[Cursor] =
-    j match {
-      case JNull      => Some(CNull(NoParent))
-      case JBool(b)   => Some(CBool(NoParent, b))
-      case JNumber(n) => Some(CNumber(NoParent, n))
-      case JString(s) => Some(CString(NoParent, s))
-      case JArray(a)  => a match {
-        case Nil => None
-        case h::t => Some(CArray(NoParent, Nil, h, t))
-      }
-      case JObject(o) => o.toList match {
-        case Nil => None
-        case (f, jj)::_ => Some(CObject(NoParent, o, (f, jj)))
-      }
-    }
-
   // lenses
   // upL: Cursor @?> Cursor
   // leftsL: Cursor @?> List[Json]
@@ -385,5 +273,4 @@ trait Cursors {
       val rights = z
     }, w.rights))
             */
-}
-       */
+

@@ -35,6 +35,11 @@ object Demo {
         +k --\ "values" flatMap (_.downArray) map (_ := jBool(false)) map (-_)
       )
 
-    println(c map (JsonPrinter.pretty(_)))
+    val c2 =
+      j.pparse flatMap (k =>
+        +k --\ "values" flatMap (_.downArray) map (-_)
+      )
+
+    println(c2 map (JsonPrinter.pretty(_)))
   }
 }
