@@ -130,8 +130,8 @@ sealed trait Cursor {
   /** Move the cursor to the given sibling key in a JSON object */
   def --(q: JsonField): Option[Cursor] =
     this match {
-      case CObject(u, p, o, (f, j)) =>
-        o(q) map (jj => CObject(u, p, o + (f, j), (q, jj)))
+      case CObject(_, p, o, (f, j)) =>
+        o(q) map (jj => CObject(false, p, o + (f, j), (q, jj)))
       case _ => None
     }
 
