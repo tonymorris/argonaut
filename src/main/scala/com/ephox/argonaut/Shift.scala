@@ -138,11 +138,8 @@ trait Shifts {
     def deleteGoLast: Shift =
       tramps(c => (DeleteGoLast, c.deleteGoLast))
 
-    def deleteGoLefts: Shift =
-      tramps(c => (DeleteGoLefts, c.deleteGoLefts))
-
-    def deleteGoRights: Shift =
-      tramps(c => (DeleteGoRights, c.deleteGoRights))
+    def deleteGoField(f: JsonField): Shift =
+      tramps(c => (DeleteGoField(f), c.deleteGoField(f)))
   }
 }
 
@@ -189,5 +186,4 @@ case object DeleteGoLeft extends ShiftHistoryElement
 case object DeleteGoRight extends ShiftHistoryElement
 case object DeleteGoFirst extends ShiftHistoryElement
 case object DeleteGoLast extends ShiftHistoryElement
-case object DeleteGoLefts extends ShiftHistoryElement
-case object DeleteGoRights extends ShiftHistoryElement
+case class DeleteGoField(f: JsonField) extends ShiftHistoryElement
