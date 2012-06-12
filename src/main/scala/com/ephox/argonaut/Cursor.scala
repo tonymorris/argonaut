@@ -307,49 +307,13 @@ object Cursor extends Cursors {
 }
 
 trait Cursors {
-
+  val focusL: Cursor @> Json =
+    Lens {
+      case CJson(j) =>
+        Costate(CJson(_), j)
+      case CArray(p, _, l, j, r) =>
+        Costate(CArray(p, true, l, _, r), j)
+      case CObject(p, _, x, (f, j)) =>
+        Costate(jj => CObject(p, true, x, (f, jj)), j)
+    }
 }
-
-  // lenses
-  // upL: Cursor @?> Cursor
-  // leftsL: Cursor @?> List[Json]
-  // rightsL: Cursor @?> List[Json]
-  // focusL: Cursor @?> Json
-  // fieldL(k: JsonField): Cursor @> Option[Json]
-  // fieldPL(k: JsonField): Cursor @?> Json
-  
-
-  /*
-  def parentL: Cursor @?> Cursor =
-    PLens(_.parent map (w => Costate(z => new Cursor {
-      val parent = Some(z)
-      val lefts = w.lefts
-      val focus = w.focus
-      val rights = w.rights
-    }, w)))
-
-  val leftsL: Cursor @> List[Json] =
-    Lens(w => Costate(z => new Cursor {
-      val parent = w.parent
-      val lefts = z
-      val focus = w.focus
-      val rights = w.rights
-    }, w.lefts))
-
-  def focusL: Cursor @> Json =
-    Lens(w => Costate(z => new Cursor {
-      val parent = w.parent
-      val lefts = w.lefts
-      val focus = z
-      val rights = w.rights
-    }, w.focus))
-
-  def rightsL: Cursor @> List[Json] =
-    Lens(w => Costate(z => new Cursor {
-      val parent = w.parent
-      val lefts = w.lefts
-      val focus = w.focus
-      val rights = z
-    }, w.rights))
-            */
-
