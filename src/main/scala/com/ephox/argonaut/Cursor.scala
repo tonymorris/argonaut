@@ -1,7 +1,7 @@
 package com.ephox
 package argonaut
 
-import scalaz._
+import scalaz._, Scalaz._
 import Json._
 import ContextElement._
 
@@ -10,7 +10,7 @@ sealed trait Cursor {
   def context: Context =
     this match {
       case CJson(_) => Context.empty
-      case CArray(p, _, _, j, _) => arrayC(j) +: p.context
+      case CArray(p, _, l, j, _) => arrayC(l.length, j) +: p.context
       case CObject(p, _, _, (f, j)) => objectC(f, j) +: p.context
     }
 
@@ -234,21 +234,21 @@ sealed trait Cursor {
     }
 
   /** Deletes all JSON values to left of focus in a JSON array. */
-  def deleteLefts: Cursor =
+  def deleteLefts: Option[Cursor] =
     this match {
-      case CArray(p, _, _, j, r) => {
-        CArray(p, true, Nil, j, r)
-      }
-      case _ => this
+      case CArray(p, _, _, j, r) =>
+        Some(CArray(p, true, Nil, j, r))
+      case _ =>
+        None
     }
 
   /** Deletes all JSON values to left of focus in a JSON array. */
-  def deleteRights: Cursor =
+  def deleteRights: Option[Cursor] =
     this match {
-      case CArray(p, _, l, j, _) => {
-        CArray(p, true, l, j, Nil)
-      }
-      case _ => this
+      case CArray(p, _, l, j, _) =>
+        Some(CArray(p, true, l, j, Nil))
+      case _ =>
+        None
     }
 
   /** Move the cursor to the given sibling key in a JSON object */
@@ -348,4 +348,28 @@ trait Cursors {
       case CObject(p, _, x, (f, j)) =>
         Costate(jj => CObject(p, true, x, (f, jj)), j)
     }
+
+  implicit val CursorInstances: Equal[Cursor] with Show[Cursor] = new Equal[Cursor] with Show[Cursor] {
+    def equal(c1: Cursor, c2: Cursor) =
+      c1 match {
+       case CJson(j1) =>
+         c2 match {
+           case CJson(j2) => j1 === j2
+           case _ => false
+         }
+       case CArray(p1, u1, l1, j1, r1) =>
+         c2 match {
+           case CArray(p2, u2, l2, j2, r2) => p1 === p2 && u1 === u2 && l1 === l2 && j1 === j2 && r1 === r2
+           case _ => false
+         }
+       case CObject(p1, u1, x1, (f1, j1)) =>
+         c2 match {
+           case CObject(p2, u2, x2, (f2, j2)) => p1 === p2 && u1 === u2 && x1 === x2 && f1 === f2 && j1 === j2
+           case _ => false
+         }
+     }
+
+    def show(c: Cursor) =
+      List(c.context.show, " ==> ".toList, c.focus.show).join
+  }
 }

@@ -70,7 +70,7 @@ trait JsonObjects {
   implicit val JsonObjectInstances: Equal[JsonObject] with Show[JsonObject] =
     new Equal[JsonObject] with Show[JsonObject] {
       def equal(j1: JsonObject, j2: JsonObject) =
-        j1.toMap === j2.toMap
+        j1.toMap == j2.toMap
       def show(a: JsonObject) = Show.showFromToString show a
 
     }

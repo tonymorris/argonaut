@@ -1,6 +1,7 @@
 package com.ephox.argonaut
 
 import com.ephox.argonaut._, Argonaut._
+import scalaz._, Scalaz._
 
 object Demo {
   def main(args: Array[String]) {
@@ -50,6 +51,12 @@ object Demo {
         +k --\ "values" flatMap (_.downArray) map (_ := jBool(false)) flatMap (_.right) flatMap (_.right) map (_ := jBool(true)) map (-_)
       )
 
+    val c5 =
+      j.pparse flatMap (k =>
+        +k --\ "values" flatMap (_.downArray) flatMap (_.right) flatMap (_.right)
+      )
+
+    c5.println
     println(c3 map (JsonPrinter.pretty(_)))
   }
 }
