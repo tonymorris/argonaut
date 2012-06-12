@@ -22,7 +22,11 @@ sealed trait Cursor {
       case CObject(_, _, _, (_, j)) => j
     }
 
-  /** Update the focus with the given function. */
+  /** Update the focus with the given function (alias for `withFocus`). */
+  def >->(k: Json => Json): Cursor =
+    withFocus(k)
+
+  /** Update the focus with the given function (alias for `>->`). */
   def withFocus(k: Json => Json): Cursor =
     this match {
       case CJson(j) =>
