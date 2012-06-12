@@ -10,6 +10,13 @@ sealed trait Shift {
   def run(c: Cursor): (ShiftHistory, Option[Cursor]) =
     shift(c).run
 
+  // todo delete
+  def runj(j: Option[Json]): (ShiftHistory, Option[Cursor]) =
+    j match {
+      case None => (ShiftHistory.build(DList()), None)
+      case Some(k) => run(+k)
+    }
+
   def history(c: Cursor): ShiftHistory =
     run(c)._1
 
@@ -176,6 +183,11 @@ trait ShiftHistorys {
     new ShiftHistory {
       val toList = l
     }
+
+  implicit val ShiftHistoryInstances: Show[ShiftHistory] =
+    new Show[ShiftHistory] {
+      def show(h: ShiftHistory) = Show[List[ShiftHistoryElement]].show(h.toList.toList)
+    }
 }
 
 ////
@@ -198,3 +210,10 @@ case object DeleteGoRight extends ShiftHistoryElement
 case object DeleteGoFirst extends ShiftHistoryElement
 case object DeleteGoLast extends ShiftHistoryElement
 case class DeleteGoField(f: JsonField) extends ShiftHistoryElement
+
+object ShiftHistoryElement extends ShiftHistoryElements
+
+trait ShiftHistoryElements {
+  implicit val ShiftHistoryElementInstances: Show[ShiftHistoryElement] =
+    Show.showA
+}
