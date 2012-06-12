@@ -22,13 +22,10 @@ sealed trait Shift {
   def or(c: Cursor): Cursor =
     cursor(c) getOrElse c
 
-  def >->(k: Cursor => Cursor): Shift =
-    Shift.build(c => shift(c) map {
-      case (h, d) => (h, d map k)
-    })
-
   def withFocus(k: Json => Json): Shift =
-    >->(_ >-> k)
+    Shift.build(c => shift(c) map {
+      case (h, d) => (h, d map (_ >-> k))
+    })
 
   def >-->(k: Json => Json): Shift =
     withFocus(k)
@@ -39,7 +36,7 @@ sealed trait Shift {
   def :=(q: => Json): Shift =
     set(q)
 
-  def >=>(s: Shift): Shift =
+  def >=>(s: => Shift): Shift =
     Shift.build(c =>
       shift(c) flatMap {
         case q@(w, d) => d match {
@@ -61,6 +58,17 @@ sealed trait Shift {
 
   def unary_~ : Shift =
     attempt
+
+  def %(n: Int): Shift = {
+    @annotation.tailrec
+    def go(n: Int, acc: Shift): Shift =
+      if (n <= 0)
+        acc
+      else
+        go(n - 1, this >=> acc)
+
+    go(n, this)
+  }
 }
 
 object Shift extends Shifts {
@@ -83,6 +91,17 @@ trait Shifts {
       (ShiftHistory(e), q)
     })
 
+  def shiftId: Shift =
+    tramp(c => (ShiftHistory.build(DList()), Some(c)))
+
+  implicit val ShiftInstances: Monoid[Shift] =
+    new Monoid[Shift] {
+      def append(s1: Shift, s2: => Shift): Shift =
+        s1 >=> s2
+      def zero =
+        shiftId
+    }
+
   object Shift {
     def left: Shift =
       tramps(c => (ShiftLeft, c.left))
@@ -101,12 +120,6 @@ trait Shifts {
 
     def down: Shift =
       tramps(c => (ShiftDown, c.downArray))
-
-    def leftN(n: Int): Shift =
-      tramps(c => (ShiftLeftN(n), n -<-: c))
-
-    def rightN(n: Int): Shift =
-      tramps(c => (ShiftRightN(n), c :->- n))
 
     def leftAt(p: Json => Boolean): Shift =
       tramps(c => (ShiftLeftAt(p), c :->? p))
@@ -175,8 +188,6 @@ case object ShiftFirst extends ShiftHistoryElement
 case object ShiftLast extends ShiftHistoryElement
 case object ShiftUp extends ShiftHistoryElement
 case object ShiftDown extends ShiftHistoryElement
-case class ShiftLeftN(n: Int) extends ShiftHistoryElement
-case class ShiftRightN(n: Int) extends ShiftHistoryElement
 case class ShiftLeftAt(p: Json => Boolean) extends ShiftHistoryElement
 case class ShiftRightAt(p: Json => Boolean) extends ShiftHistoryElement
 case class SiblingField(f: JsonField) extends ShiftHistoryElement
