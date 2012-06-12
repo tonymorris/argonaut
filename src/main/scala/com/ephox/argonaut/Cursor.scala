@@ -4,10 +4,16 @@ package argonaut
 import scalaz._
 import Json._
 import ContextElement._
-import Lens._
-import CostateT._
 
 sealed trait Cursor {
+  /** Return the current context of the focus. */
+  def context: Context =
+    this match {
+      case CJson(_) => Context.empty
+      case CArray(p, _, _, j, _) => arrayC(j) +: p.context
+      case CObject(p, _, _, (f, j)) => objectC(f, j) +: p.context
+    }
+
   /** Set the focus to the given value. */
   def focus: Json =
     this match {
@@ -227,12 +233,38 @@ sealed trait Cursor {
       case _ => None
     }
 
+  /** Deletes all JSON values to left of focus in a JSON array. */
+  def deleteLefts: Cursor =
+    this match {
+      case CArray(p, _, _, j, r) => {
+        CArray(p, true, Nil, j, r)
+      }
+      case _ => this
+    }
+
+  /** Deletes all JSON values to left of focus in a JSON array. */
+  def deleteRights: Cursor =
+    this match {
+      case CArray(p, _, l, j, _) => {
+        CArray(p, true, l, j, Nil)
+      }
+      case _ => this
+    }
+
   /** Move the cursor to the given sibling key in a JSON object */
   def deleteGoField(q: JsonField): Option[Cursor] =
     this match {
       case CObject(p, _, o, (f, _)) =>
         o(q) map (jj => CObject(p, true, o - f, (q, jj)))
       case _ => None
+    }
+
+  /** Delete the given field in a JSON object */
+  def deleteField(q: JsonField): Cursor =
+    this match {
+      case CObject(p, _, o, (f, j)) =>
+        CObject(p, true, o - q, (f, j))
+      case _ => this
     }
 
   /** Move the cursor up one step to the parent context. */
