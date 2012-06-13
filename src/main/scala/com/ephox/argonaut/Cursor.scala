@@ -85,8 +85,12 @@ sealed trait Cursor {
       case _ => None
     }
 
-  /** Move the cursor left in a JSON array the given number of times. A negative value will move the cursor right. */
+  /** Move the cursor left in a JSON array the given number of times. A negative value will move the cursor right (alias for `leftN`). */
   def -<-:(n: Int): Option[Cursor] =
+    leftN(n)
+
+  /** Move the cursor right in a JSON array the given number of times. A negative value will move the cursor left (alias for `:->-`). */
+  def leftN(n: Int): Option[Cursor] =
     if(n < 0)
       :->-(-n)
     else {
@@ -99,8 +103,12 @@ sealed trait Cursor {
       r(n, Some(this))
     }
 
-  /** Move the cursor right in a JSON array the given number of times. A negative value will move the cursor left. */
+  /** Move the cursor right in a JSON array the given number of times. A negative value will move the cursor left (alias for `rightN`). */
   def :->-(n: Int): Option[Cursor] =
+    rightN(n)
+
+  /** Move the cursor right in a JSON array the given number of times. A negative value will move the cursor left (alias for `:->-`). */
+  def rightN(n: Int): Option[Cursor] =
     if(n > 0)
       -<-:(-n)
     else {
@@ -113,8 +121,12 @@ sealed trait Cursor {
       r(n, Some(this))
     }
 
-  /** Move the cursor left in a JSON array until the given predicate matches the focus. */
-  def ?<-:(p: Json => Boolean): Option[Cursor] = {
+  /** Move the cursor left in a JSON array until the given predicate matches the focus (alias for `leftAt`). */
+  def ?<-:(p: Json => Boolean): Option[Cursor] =
+    leftAt(p)
+
+  /** Move the cursor left in a JSON array until the given predicate matches the focus (alias for `?<-:`). */
+  def leftAt(p: Json => Boolean): Option[Cursor] = {
     @annotation.tailrec
     def r(c: Option[Cursor]): Option[Cursor] =
       c match {
@@ -125,8 +137,12 @@ sealed trait Cursor {
     r(left)
   }
 
-  /** Move the cursor right in a JSON array until the given predicate matches the focus. */
-  def :->?(p: Json => Boolean): Option[Cursor] = {
+  /** Move the cursor right in a JSON array until the given predicate matches the focus (alias for `rightAt`). */
+  def :->?(p: Json => Boolean): Option[Cursor] =
+    rightAt(p)
+
+  /** Move the cursor right in a JSON array until the given predicate matches the focus (alias for `:->?`). */
+  def rightAt(p: Json => Boolean): Option[Cursor] = {
     @annotation.tailrec
     def r(c: Option[Cursor]): Option[Cursor] =
       c match {
@@ -136,17 +152,25 @@ sealed trait Cursor {
 
     r(right)
   }
-  
-  /** Move the cursor to the given sibling key in a JSON object */
+
+  /** Move the cursor to the given sibling field in a JSON object (alias for `field`). */
   def --(q: JsonField): Option[Cursor] =
+    field(q)
+
+  /** Move the cursor to the given sibling field in a JSON object (alias for `--`). */
+  def field(q: JsonField): Option[Cursor] =
     this match {
       case CObject(p, u, o, (f, j)) =>
         o(q) map (jj => CObject(p, u, o, (q, jj)))
       case _ => None
     }
 
-  /** Move the cursor down to a JSON object at the given field. */
+  /** Move the cursor down to a JSON object at the given field (alias for `downField`). */
   def --\(q: JsonField): Option[Cursor] =
+    downField(q)
+
+  /** Move the cursor down to a JSON object at the given field (alias for `--\`). */
+  def downField(q: JsonField): Option[Cursor] =
     focus.obj flatMap (o => o(q) map (jj => CObject(this, false, o, (q, jj))))
 
   /** Move the cursor down to a JSON array at the first element (alias for `\\`). */
@@ -160,13 +184,25 @@ sealed trait Cursor {
   def \\ : Option[Cursor] =
     downArray
 
-  /** Move the cursor down to a JSON array at the first element satisfying the given predicate. */
+  /** Move the cursor down to a JSON array at the first element satisfying the given predicate (alias for `downAt`). */
   def -\(p: Json => Boolean): Option[Cursor] =
+    downAt(p)
+
+  /** Move the cursor down to a JSON array at the first element satisfying the given predicate (alias for `-\`). */
+  def downAt(p: Json => Boolean): Option[Cursor] =
     downArray flatMap (_ :->? p)
 
-  /** Move the cursor down to a JSON array at the given index. */
+  /** Move the cursor down to a JSON array at the given index (alias for `downN`). */
   def =\(n: Int): Option[Cursor] =
+    downN(n)
+
+  /** Move the cursor down to a JSON array at the given index (alias for `=\`). */
+  def downN(n: Int): Option[Cursor] =
     downArray flatMap (_ :->- n)
+
+  /** Deletes the JSON value at focus and moves up to parent (alias for `deleteGoParent`). */
+  def delete : Option[Cursor] =
+    deleteGoParent
 
   /** Deletes the JSON value at focus and moves up to parent (alias for `deleteGoParent`). */
   def unary_! : Option[Cursor] =
@@ -259,7 +295,7 @@ sealed trait Cursor {
         None
     }
 
-  /** Move the cursor to the given sibling key in a JSON object */
+  /** Move the cursor to the given sibling field in a JSON object */
   def deleteGoField(q: JsonField): Option[Cursor] =
     this match {
       case CObject(p, _, o, (f, _)) =>
@@ -304,8 +340,12 @@ sealed trait Cursor {
       }
     }
 
-  /** Unapplies the cursor to the top-level parent. */
-  def unary_- : Json = {
+  /** Unapplies the cursor to the top-level parent (alias for `undo`). */
+  def unary_- : Json =
+    undo
+
+  /** Unapplies the cursor to the top-level parent (alias for `unary_-`). */
+  def undo: Json = {
     @annotation.tailrec
     def goup(c: Cursor): Json =
       c match {
