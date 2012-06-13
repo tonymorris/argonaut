@@ -10,7 +10,7 @@ sealed trait Shift {
   def run(c: Cursor): ShiftResult =
     shift(c).run
 
-  def |>(j: Option[Json]): ShiftResult =
+  def <|(j: Option[Json]): ShiftResult =
     j match {
       case None => ShiftResult(ShiftHistory.build(DList()), None)
       case Some(k) => run(+k)
@@ -66,6 +66,63 @@ sealed trait Shift {
 
     go(n, this)
   }
+
+  def left: Shift =
+    this >=> Shift.tramps(c => (ShiftLeft, c.left))
+
+  def right: Shift =
+    this >=> Shift.tramps(c => (ShiftRight, c.right))
+
+  def first: Shift =
+    this >=> Shift.tramps(c => (ShiftFirst, c.first))
+
+  def last: Shift =
+    this >=> Shift.tramps(c => (ShiftLast, c.last))
+
+  def up: Shift =
+    this >=> Shift.tramps(c => (ShiftUp, c.up))
+
+  def downArray: Shift =
+    this >=> Shift.tramps(c => (ShiftDown, c.downArray))
+
+  def -\(p: Json => Boolean): Shift =
+    this >=> Shift.tramps(c => (ShiftDownAt(p), c -\ p))
+
+  def =\(n: Int): Shift =
+    this >=> Shift.tramps(c => (ShiftDownN(n), c =\ n))
+
+  def ?<-:(p: Json => Boolean): Shift =
+    this >=> Shift.tramps(c => (ShiftLeftAt(p), p ?<-: c))
+
+  def :->?(p: Json => Boolean): Shift =
+    this >=> Shift.tramps(c => (ShiftRightAt(p), c :->? p))
+
+  def --(f: JsonField): Shift =
+    this >=> Shift.tramps(c => (SiblingField(f), c -- f))
+
+  def --\(f: JsonField): Shift =
+    this >=> Shift.tramps(c => (DownField(f), c --\ f))
+
+  def delete: Shift =
+    this >=> Shift.tramps(c => (DeleteGoParent, c.deleteGoParent))
+
+  def deleteGoParent: Shift =
+    this >=> Shift.tramps(c => (DeleteGoParent, c.deleteGoParent))
+
+  def deleteGoLeft: Shift =
+    this >=> Shift.tramps(c => (DeleteGoLeft, c.deleteGoLeft))
+
+  def deleteGoRight: Shift =
+    this >=> Shift.tramps(c => (DeleteGoRight, c.deleteGoRight))
+
+  def deleteGoFirst: Shift =
+    this >=> Shift.tramps(c => (DeleteGoFirst, c.deleteGoFirst))
+
+  def deleteGoLast: Shift =
+    this >=> Shift.tramps(c => (DeleteGoLast, c.deleteGoLast))
+
+  def deleteGoField(f: JsonField): Shift =
+    this >=> Shift.tramps(c => (DeleteGoField(f), c.deleteGoField(f)))
 }
 
 object Shift extends Shifts {
@@ -88,7 +145,7 @@ trait Shifts {
       ShiftResult(ShiftHistory(e), q)
     })
 
-  def shiftId: Shift =
+  def shift: Shift =
     tramp(c => ShiftResult(ShiftHistory.build(DList()), Some(c)))
 
   implicit val ShiftInstances: Monoid[Shift] =
@@ -96,59 +153,6 @@ trait Shifts {
       def append(s1: Shift, s2: => Shift): Shift =
         s1 >=> s2
       def zero =
-        shiftId
+        shift
     }
-
-  object Shift {
-    def left: Shift =
-      tramps(c => (ShiftLeft, c.left))
-
-    def right: Shift =
-      tramps(c => (ShiftRight, c.right))
-
-    def first: Shift =
-      tramps(c => (ShiftFirst, c.first))
-
-    def last: Shift =
-      tramps(c => (ShiftLast, c.last))
-
-    def up: Shift =
-      tramps(c => (ShiftUp, c.up))
-
-    def down: Shift =
-      tramps(c => (ShiftDown, c.downArray))
-
-    def leftAt(p: Json => Boolean): Shift =
-      tramps(c => (ShiftLeftAt(p), c :->? p))
-
-    def rightAt(p: Json => Boolean): Shift =
-      tramps(c => (ShiftRightAt(p), p ?<-: c))
-
-    def field(f: JsonField): Shift =
-      tramps(c => (SiblingField(f), c -- f))
-
-    def downField(f: JsonField): Shift =
-      tramps(c => (DownField(f), c --\ f))
-
-    def delete: Shift =
-      tramps(c => (DeleteGoParent, c.deleteGoParent))
-
-    def deleteGoParent: Shift =
-      tramps(c => (DeleteGoParent, c.deleteGoParent))
-
-    def deleteGoLeft: Shift =
-      tramps(c => (DeleteGoLeft, c.deleteGoLeft))
-
-    def deleteGoRight: Shift =
-      tramps(c => (DeleteGoRight, c.deleteGoRight))
-
-    def deleteGoFirst: Shift =
-      tramps(c => (DeleteGoFirst, c.deleteGoFirst))
-
-    def deleteGoLast: Shift =
-      tramps(c => (DeleteGoLast, c.deleteGoLast))
-
-    def deleteGoField(f: JsonField): Shift =
-      tramps(c => (DeleteGoField(f), c.deleteGoField(f)))
-  }
 }

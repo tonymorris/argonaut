@@ -13,6 +13,8 @@ case object ShiftFirst extends ShiftHistoryElement
 case object ShiftLast extends ShiftHistoryElement
 case object ShiftUp extends ShiftHistoryElement
 case object ShiftDown extends ShiftHistoryElement
+case class ShiftDownAt(p: Json => Boolean) extends ShiftHistoryElement
+case class ShiftDownN(n: Int) extends ShiftHistoryElement
 case class ShiftLeftAt(p: Json => Boolean) extends ShiftHistoryElement
 case class ShiftRightAt(p: Json => Boolean) extends ShiftHistoryElement
 case class SiblingField(f: JsonField) extends ShiftHistoryElement
@@ -36,7 +38,9 @@ trait ShiftHistoryElements {
           case ShiftFirst => "|<-"
           case ShiftLast => "->|"
           case ShiftUp => "_/"
-          case ShiftDown => "-\\"
+          case ShiftDown => "\\\\"
+          case ShiftDownAt(_) => "-\\"
+          case ShiftDownN(n) => "-\\(" + n + ")"
           case ShiftLeftAt(_) => "<?-"
           case ShiftRightAt(_) => "-?>"
           case SiblingField(f) => "--(" + f + ")"

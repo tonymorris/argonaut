@@ -6,8 +6,6 @@ import scalaz._, Scalaz._
 
 object ShiftDemo {
   def main(args: Array[String]) {
-    import Shift.Shift._
-
     val j =
       """
         {
@@ -41,11 +39,9 @@ object ShiftDemo {
         }
       """
 
-    val q = j.pparse
-    val r = downField("values") >=> down >=> down >=> right >--> (jStringL =>= (_.reverse)) >=> up >=> right := jString("cat")
-    val s = r |> q
-    val u = s.cursor map (c => JsonPrinter.pretty(-c))
-    u.println
+    val r = shift.--\("values").downArray.downArray.right.>-->(jStringL =>= (_.reverse)).up.right := jString("cat")
+    val s = r <| j.pparse
+    s.cursor map (c => JsonPrinter.pretty(-c)) foreach println
     s.println
   }
 }
