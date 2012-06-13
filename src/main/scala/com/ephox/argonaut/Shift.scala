@@ -123,7 +123,7 @@ trait Shifts {
       tramps(c => (ShiftLast, c.last))
 
     def up: Shift =
-      tramps(c => (ShiftLast, c.up))
+      tramps(c => (ShiftUp, c.up))
 
     def down: Shift =
       tramps(c => (ShiftDown, c.downArray))
@@ -215,5 +215,25 @@ object ShiftHistoryElement extends ShiftHistoryElements
 
 trait ShiftHistoryElements {
   implicit val ShiftHistoryElementInstances: Show[ShiftHistoryElement] =
-    Show.showA
+    new Show[ShiftHistoryElement] {
+      def show(e: ShiftHistoryElement) =
+        (e match {
+          case ShiftLeft => "<-"
+          case ShiftRight => "->"
+          case ShiftFirst => "|<-"
+          case ShiftLast => "->|"
+          case ShiftUp => "_/"
+          case ShiftDown => "-\\"
+          case ShiftLeftAt(_) => "<?-"
+          case ShiftRightAt(_) => "-?>"
+          case SiblingField(f) => "--(" + f + ")"
+          case DownField(f) => "--\\(" + f + ")"
+          case DeleteGoParent => "!_/"
+          case DeleteGoLeft => "<-!"
+          case DeleteGoRight => "!->"
+          case DeleteGoFirst => "|<-!"
+          case DeleteGoLast => "!->|"
+          case DeleteGoField(f) => "!--(" + f + ")"
+        }).toList
+    }
 }

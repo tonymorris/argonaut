@@ -47,5 +47,6 @@ object ShiftDemo {
     val u = t map (c => JsonPrinter.pretty(-c))
 
     u.println
+    s.println
   }
 }
