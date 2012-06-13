@@ -184,9 +184,14 @@ trait ShiftHistorys {
       val toList = l
     }
 
-  implicit val ShiftHistoryInstances: Show[ShiftHistory] =
-    new Show[ShiftHistory] {
+  implicit val ShiftHistoryInstances: Show[ShiftHistory] with Equal[ShiftHistory] with Monoid[ShiftHistory] =
+    new Show[ShiftHistory] with Equal[ShiftHistory] with Monoid[ShiftHistory] {
       def show(h: ShiftHistory) = Show[List[ShiftHistoryElement]].show(h.toList.toList)
+      def equal(h1: ShiftHistory, h2: ShiftHistory) =
+        h1.toList === h2.toList
+      def zero = ShiftHistory.build(DList())
+      def append(h1: ShiftHistory, h2: => ShiftHistory) =
+        h1 ++ h2
     }
 }
 
@@ -214,8 +219,8 @@ case class DeleteGoField(f: JsonField) extends ShiftHistoryElement
 object ShiftHistoryElement extends ShiftHistoryElements
 
 trait ShiftHistoryElements {
-  implicit val ShiftHistoryElementInstances: Show[ShiftHistoryElement] =
-    new Show[ShiftHistoryElement] {
+  implicit val ShiftHistoryElementInstances: Show[ShiftHistoryElement] with Equal[ShiftHistoryElement] =
+    new Show[ShiftHistoryElement] with Equal[ShiftHistoryElement] {
       def show(e: ShiftHistoryElement) =
         (e match {
           case ShiftLeft => "<-"
@@ -235,5 +240,8 @@ trait ShiftHistoryElements {
           case DeleteGoLast => "!->|"
           case DeleteGoField(f) => "!--(" + f + ")"
         }).toList
+
+      def equal(e1: ShiftHistoryElement, e2: ShiftHistoryElement) =
+        e1 == e2
     }
 }
