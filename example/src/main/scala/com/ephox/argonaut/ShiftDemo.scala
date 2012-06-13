@@ -25,7 +25,7 @@ object ShiftDemo {
           "operator": "is",
           "values": [
                       [
-                        "cat"
+                        "horse"
                       , "lolo"
                       , [
                           "hi"
