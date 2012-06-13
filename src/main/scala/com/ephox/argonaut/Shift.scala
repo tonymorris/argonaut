@@ -5,34 +5,29 @@ import scalaz._, Scalaz._, Free._
 import Json._
 
 sealed trait Shift {
-  private[argonaut] def shift(c: Cursor): Trampoline[(ShiftHistory, Option[Cursor])]
+  private[argonaut] def shift(c: Cursor): Trampoline[ShiftResult]
 
-  def run(c: Cursor): (ShiftHistory, Option[Cursor]) =
+  def run(c: Cursor): ShiftResult =
     shift(c).run
 
   // todo delete
-  def runj(j: Option[Json]): (ShiftHistory, Option[Cursor]) =
+  def |>(j: Option[Json]): ShiftResult =
     j match {
-      case None => (ShiftHistory.build(DList()), None)
+      case None => ShiftResult(ShiftHistory.build(DList()), None)
       case Some(k) => run(+k)
     }
 
   def history(c: Cursor): ShiftHistory =
-    run(c)._1
+    run(c).history
 
   def cursor(c: Cursor): Option[Cursor] =
-    run(c)._2
-
-  def cursorOr(c: Cursor, d: => Cursor): Cursor =
-    cursor(c) getOrElse d
+    run(c).cursor
 
   def or(c: Cursor): Cursor =
     cursor(c) getOrElse c
 
   def withFocus(k: Json => Json): Shift =
-    Shift.build(c => shift(c) map {
-      case (h, d) => (h, d map (_ >-> k))
-    })
+    Shift.build(c => shift(c) map (r => ShiftResult(r.history, r.cursor map (_ >-> k))))
 
   def >-->(k: Json => Json): Shift =
     withFocus(k)
@@ -45,23 +40,19 @@ sealed trait Shift {
 
   def >=>(s: => Shift): Shift =
     Shift.build(c =>
-      shift(c) flatMap {
-        case q@(w, d) => d match {
+      shift(c) flatMap (
+        q => q.cursor match {
           case None => implicitly[Monad[Trampoline]].point(q)
-          case Some(cc) => s shift cc map {
-            case (ww, ccc) => (w ++ ww, ccc)
-          }
-        }
-      })
+          case Some(cc) => s shift cc map (r => ShiftResult(q.history ++ r.history, r.cursor))
+        }))
 
   def <=<(s: Shift): Shift =
     s >=> this
 
   def attempt: Shift =
     Shift.build(c =>
-      shift(c) map {
-        case (w, d) => (w, d orElse Some(c))
-      })
+      shift(c) map (r => ShiftResult(r.history, r.cursor orElse Some(c)))
+    )
 
   def unary_~ : Shift =
     attempt
@@ -80,26 +71,26 @@ sealed trait Shift {
 
 object Shift extends Shifts {
   def apply(k: Cursor => Option[Cursor]): Shift =
-    tramp(c => (ShiftHistory.build(DList()), k(c)))
+    tramp(c => ShiftResult(ShiftHistory.build(DList()), k(c)))
 }
 
 trait Shifts {
-  private[argonaut] def build(f: Cursor => Trampoline[(ShiftHistory, Option[Cursor])]): Shift =
+  private[argonaut] def build(f: Cursor => Trampoline[ShiftResult]): Shift =
     new Shift {
       def shift(c: Cursor) = f(c)
     }
 
-  private[argonaut] def tramp(f: Cursor => (ShiftHistory, Option[Cursor])): Shift =
+  private[argonaut] def tramp(f: Cursor => ShiftResult): Shift =
     build(c => implicitly[Monad[Trampoline]].point(f(c)))
 
   private[argonaut] def tramps(f: Cursor => (ShiftHistoryElement, Option[Cursor])): Shift =
     tramp(c => {
       val (e, q) = f(c)
-      (ShiftHistory(e), q)
+      ShiftResult(ShiftHistory(e), q)
     })
 
   def shiftId: Shift =
-    tramp(c => (ShiftHistory.build(DList()), Some(c)))
+    tramp(c => ShiftResult(ShiftHistory.build(DList()), Some(c)))
 
   implicit val ShiftInstances: Monoid[Shift] =
     new Monoid[Shift] {
@@ -244,4 +235,46 @@ trait ShiftHistoryElements {
       def equal(e1: ShiftHistoryElement, e2: ShiftHistoryElement) =
         e1 == e2
     }
+}
+
+sealed trait ShiftResult {
+  val history: ShiftHistory
+  val cursor: Option[Cursor]
+
+  def hasCursor =
+    cursor.isDefined
+
+  def cursorOr(c: => Cursor): Cursor =
+    cursor getOrElse c
+}
+
+object ShiftResult extends ShiftResults {
+  def apply(h: ShiftHistory, c: Option[Cursor]): ShiftResult =
+    new ShiftResult {
+      val history = h
+      val cursor = c
+    }
+}
+
+trait ShiftResults {
+  implicit val ShiftResultInstances: Equal[ShiftResult] with Show[ShiftResult] =
+    new Equal[ShiftResult] with Show[ShiftResult] {
+      def equal(r1: ShiftResult, r2: ShiftResult) =
+        Equal.equalBy((r: ShiftResult) => (r.history, r.cursor)).equal(r1, r2)
+      def show(r: ShiftResult) =
+        ("{ history=" + r.history.shows + (r.cursor match {
+          case None => ""
+          case Some(c) => ", cursor=" + c.shows
+        }) + " }").toList
+    }
+
+  def resultHistoryL: ShiftResult @> ShiftHistory =
+    Lens(r => Costate(ShiftResult(_, r.cursor), r.history))
+
+  def resultCursorL: ShiftResult @> Option[Cursor] =
+    Lens(r => Costate(ShiftResult(r.history, _), r.cursor))
+
+  def resultCursorPL: ShiftResult @?> Cursor =
+    PLensT.somePLens compose ~resultCursorL
+
 }

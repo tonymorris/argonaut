@@ -43,9 +43,8 @@ object ShiftDemo {
 
     val q = j.pparse
     val r = downField("values") >=> down >=> down >=> right >--> (jStringL =>= (_.reverse)) >=> up >=> right := jString("cat")
-    val (s, t) = r runj q
-    val u = t map (c => JsonPrinter.pretty(-c))
-
+    val s = r |> q
+    val u = s.cursor map (c => JsonPrinter.pretty(-c))
     u.println
     s.println
   }
