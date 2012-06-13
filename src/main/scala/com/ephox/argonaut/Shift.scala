@@ -85,6 +85,9 @@ sealed trait Shift {
   def downArray: Shift =
     this >=> Shift.tramps(c => (ShiftDown, c.downArray))
 
+  def \\ : Shift =
+    downArray
+
   def -\(p: Json => Boolean): Shift =
     this >=> Shift.tramps(c => (ShiftDownAt(p), c -\ p))
 

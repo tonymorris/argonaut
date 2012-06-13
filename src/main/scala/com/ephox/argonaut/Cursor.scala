@@ -149,12 +149,16 @@ sealed trait Cursor {
   def --\(q: JsonField): Option[Cursor] =
     focus.obj flatMap (o => o(q) map (jj => CObject(this, false, o, (q, jj))))
 
-  /** Move the cursor down to a JSON array at the first element. */
+  /** Move the cursor down to a JSON array at the first element (alias for `\\`). */
   def downArray: Option[Cursor] =
     focus.array flatMap (_ match {
       case Nil => None
       case h::t => Some(CArray(this, false, Nil, h, t))
     })
+
+  /** Move the cursor down to a JSON array at the first element (alias for `downArray`). */
+  def \\ : Option[Cursor] =
+    downArray
 
   /** Move the cursor down to a JSON array at the first element satisfying the given predicate. */
   def -\(p: Json => Boolean): Option[Cursor] =

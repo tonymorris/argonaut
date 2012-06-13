@@ -39,7 +39,7 @@ object ShiftDemo {
         }
       """
 
-    val r = shift.--\("values").downArray.downArray.right.>-->(jStringL =>= (_.reverse)).up.right := jString("cat")
+    val r = shift.--\("values").\\.\\.right.>-->(jStringL =>= (_.reverse)).up.right := jString("cat")
     val s = r <| j.pparse
     s.cursor map (c => JsonPrinter.pretty(-c)) foreach println
     s.println
