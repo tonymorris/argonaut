@@ -12,4 +12,7 @@ JsonIdentitys with
 JsonPrinters with
 JsonQuerys with
 Shifts with
+ShiftHistorys with
+ShiftHistoryElements with
+ShiftResults with
 StringWraps
