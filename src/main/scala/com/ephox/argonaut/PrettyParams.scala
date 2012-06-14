@@ -44,10 +44,10 @@ sealed trait PrettyParams {
       k.fold(
         Vector('n', 'u', 'l', 'l')
       , if(_) Vector('t', 'r', 'u', 'e') else Vector('f', 'a', 'l', 's', 'e')
-      , n => Vector.fromList((if(math.floor(n) == n && math.round(n).toDouble == n)
+      , n => error("") /* Vector.fromList((if(math.floor(n) == n && math.round(n).toDouble == n)
                math.round(n).toString
              else
-               n.toString).toList)
+               n.toString).toList) */
       , s => error("") // '"' +: DList.fromList(s.toList flatMap escape) :+ '"'
       , e => error("") /* {
           def spin(g: List[Vector[Char]]): Vector[Char] =
