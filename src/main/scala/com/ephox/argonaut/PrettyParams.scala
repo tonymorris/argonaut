@@ -4,24 +4,23 @@ package argonaut
 import scalaz._, Scalaz._
 
 sealed trait PrettyParams {
-  val lbraceLeft: JsonWhitespaces
-  val lbraceRight: JsonWhitespaces
-  val rbraceLeft: JsonWhitespaces
-  val rbraceRight: JsonWhitespaces
-  val lbracketLeft: JsonWhitespaces
-  val lbracketRight: JsonWhitespaces
-  val rbracketLeft: JsonWhitespaces
-  val rbracketRight: JsonWhitespaces
-  val commaLeft: JsonWhitespaces
-  val commaRight: JsonWhitespaces
-  val colonLeft: JsonWhitespaces
-  val colonRight: JsonWhitespaces
-  val indent: Int => JsonWhitespaces
+  val lbraceLeft: Int => JsonWhitespaces
+  val lbraceRight: Int => JsonWhitespaces
+  val rbraceLeft: Int => JsonWhitespaces
+  val rbraceRight: Int => JsonWhitespaces
+  val lbracketLeft: Int => JsonWhitespaces
+  val lbracketRight: Int => JsonWhitespaces
+  val rbracketLeft: Int => JsonWhitespaces
+  val rbracketRight: Int => JsonWhitespaces
+  val commaLeft: Int => JsonWhitespaces
+  val commaRight: Int => JsonWhitespaces
+  val colonLeft: Int => JsonWhitespaces
+  val colonRight: Int => JsonWhitespaces
 
   def pretty(j: Json): String =
-    listpretty(j).toList.mkString
+    lpretty(j).toList.mkString
 
-  def listpretty(j: Json): DList[Char] = {
+  def lpretty(j: Json): Vector[Char] = {
     def escape(c: Char): List[Char] =
       c match {
         case '\\' => List('\\', '\\')
@@ -34,40 +33,41 @@ sealed trait PrettyParams {
         case _ => List(c)
       }
 
-    val lbrace = List(lbraceLeft.chars, DList('{'), lbraceRight.chars)
-    val rbrace = List(rbraceLeft.chars, DList('}'), rbraceRight.chars)
-    val lbracket = List(lbracketLeft.chars, DList('['), lbracketRight.chars)
-    val rbracket = List(rbracketLeft.chars, DList(']'), rbracketRight.chars)
-    val comma = List(commaLeft.chars, DList(','), commaRight.chars)
-    val colon = List(colonLeft.chars, DList(':'), colonRight.chars)
+    def trav(depth: Int, k: Json): Vector[Char] = {
+      val lbrace = List(lbraceLeft(depth).chars, Vector('{'), lbraceRight(depth).chars)
+      val rbrace = List(rbraceLeft(depth).chars, Vector('}'), rbraceRight(depth).chars)
+      val lbracket = List(lbracketLeft(depth).chars, Vector('['), lbracketRight(depth).chars)
+      val rbracket = List(rbracketLeft(depth).chars, Vector(']'), rbracketRight(depth).chars)
+      val comma = List(commaLeft(depth).chars, Vector(','), commaRight(depth).chars)
+      val colon = List(colonLeft(depth).chars, Vector(':'), colonRight(depth).chars)
 
-    def trav(i: Int, k: Json): DList[Char] =
-      indent(i).chars ++ k.fold(
-        DList('n', 'u', 'l', 'l')
-      , if(_) DList('t', 'r', 'u', 'e') else DList('f', 'a', 'l', 's', 'e')
-      , n => DList.fromList((if(math.floor(n) == n && math.round(n).toDouble == n)
+      k.fold(
+        Vector('n', 'u', 'l', 'l')
+      , if(_) Vector('t', 'r', 'u', 'e') else Vector('f', 'a', 'l', 's', 'e')
+      , n => Vector.fromList((if(math.floor(n) == n && math.round(n).toDouble == n)
                math.round(n).toString
              else
                n.toString).toList)
-      , s => '"' +: DList.fromList(s.toList flatMap escape) :+ '"'
-      , e => {
-          def spin(g: List[DList[Char]]): DList[Char] =
+      , s => error("") // '"' +: DList.fromList(s.toList flatMap escape) :+ '"'
+      , e => error("") /* {
+          def spin(g: List[Vector[Char]]): Vector[Char] =
             g match {
               case Nil => rbracket.suml
               case h::t => h ++ spin(t)
             }
-          lbracket.suml ++ spin(e map (trav(i + 1, _)) intercalate comma)
-        }
-      , o => {
-          def spin(g: List[DList[Char]]): DList[Char] =
+          lbracket.suml ++ spin(e map (trav(depth + 1, _)) intercalate comma)
+        }                 */
+      , o => error("") /*{
+          def spin(g: List[Vector[Char]]): Vector[Char] =
             g match {
               case Nil => rbrace.suml
               case h::t => h ++ spin(t)
             }
           lbrace.suml ++ spin(o.toList map {
-            case (f, jj) => ('"' +: DList.fromList(f.toList flatMap escape) :+ '"') ++ colon.suml ++ trav(i + 1, jj)
+            case (f, jj) => ('"' +: Vector.fromList(f.toList flatMap escape) :+ '"') ++ colon.suml ++ trav(depth + 1, jj)
           } intercalate comma)
-        })
+        }*/)
+    }
 
     trav(0, j)
   }
@@ -75,19 +75,18 @@ sealed trait PrettyParams {
 
 object PrettyParams extends PrettyParamss {
   def apply(
-             lbraceLeft0: JsonWhitespaces
-           , lbraceRight0: JsonWhitespaces
-           , rbraceLeft0: JsonWhitespaces
-           , rbraceRight0: JsonWhitespaces
-           , lbracketLeft0: JsonWhitespaces
-           , lbracketRight0: JsonWhitespaces
-           , rbracketLeft0: JsonWhitespaces
-           , rbracketRight0: JsonWhitespaces
-           , commaLeft0: JsonWhitespaces
-           , commaRight0: JsonWhitespaces
-           , colonLeft0: JsonWhitespaces
-           , colonRight0: JsonWhitespaces
-           , indent0: Int => JsonWhitespaces
+             lbraceLeft0: Int => JsonWhitespaces
+           , lbraceRight0: Int => JsonWhitespaces
+           , rbraceLeft0: Int => JsonWhitespaces
+           , rbraceRight0: Int => JsonWhitespaces
+           , lbracketLeft0: Int => JsonWhitespaces
+           , lbracketRight0: Int => JsonWhitespaces
+           , rbracketLeft0: Int => JsonWhitespaces
+           , rbracketRight0: Int => JsonWhitespaces
+           , commaLeft0: Int => JsonWhitespaces
+           , commaRight0: Int => JsonWhitespaces
+           , colonLeft0: Int => JsonWhitespaces
+           , colonRight0: Int => JsonWhitespaces
            ): PrettyParams =
     new PrettyParams {
       val lbraceLeft = lbraceLeft0
@@ -102,44 +101,47 @@ object PrettyParams extends PrettyParamss {
       val commaRight = commaRight0
       val colonLeft = colonLeft0
       val colonRight = colonRight0
-      val indent = indent0
     }
 }
 
 trait PrettyParamss {
   def compact: PrettyParams =
     PrettyParams(
-      Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , (_: Int) => Monoid[JsonWhitespaces].zero
+      _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
     )
 
-  def pretty: PrettyParams =
+  def pretty(indent: JsonWhitespaces): PrettyParams = {
     PrettyParams(
-      Monoid[JsonWhitespaces].zero
-    , +JsonLine
-    , +JsonLine
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , +JsonLine
-    , Monoid[JsonWhitespaces].zero
-    , Monoid[JsonWhitespaces].zero
-    , (n: Int) => JsonSpace * (2 * n)
+      _ => Monoid[JsonWhitespaces].zero
+    , n => {
+        println(n)
+        indent * 3
+      }
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
+    , _ => Monoid[JsonWhitespaces].zero
     )
+  }
+
+  def spaces2 = pretty(JsonSpace * 2): PrettyParams
 }
 
 sealed trait JsonWhitespace {
@@ -159,7 +161,7 @@ sealed trait JsonWhitespace {
       else
         go(x - 1, this +: w)
 
-    go(n, JsonWhitespaces.build(DList()))
+    go(n, JsonWhitespaces.build(Vector()))
   }
 
   def unary_+ : JsonWhitespaces =
@@ -171,7 +173,7 @@ case object JsonLine extends JsonWhitespace
 case object JsonReturn extends JsonWhitespace
 
 sealed trait JsonWhitespaces {
-  val value: DList[JsonWhitespace]
+  val value: Vector[JsonWhitespace]
 
   def +:(s: JsonWhitespace): JsonWhitespaces =
     JsonWhitespaces.build(s +: value)
@@ -189,69 +191,66 @@ sealed trait JsonWhitespaces {
         w
       else
         go(x - 1, w ++ w)
-    go(n, JsonWhitespaces.build(DList()))
+    go(n, JsonWhitespaces.build(Vector()))
   }
+
   def toList: List[JsonWhitespace] =
     value.toList
 
   def string: String =
-    toList map (_.toChar) mkString
+    value map (_.toChar) mkString
 
-  def chars: DList[Char] =
+  def chars: Vector[Char] =
     value map (_.toChar)
 
-  def lbraceLeftL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(_, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.lbraceLeft))
+  def lbraceLeftL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(_, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.lbraceLeft))
 
-  def lbraceRightL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, _, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.lbraceRight))
+  def lbraceRightL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, _, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.lbraceRight))
 
-  def rbraceLeftL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, _, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.rbraceLeft))
+  def rbraceLeftL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, _, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.rbraceLeft))
 
-  def rbraceRightL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, _, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.rbraceRight))
+  def rbraceRightL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, _, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.rbraceRight))
 
-  def lbracketLeftL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, _, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.lbracketLeft))
+  def lbracketLeftL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, _, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.lbracketLeft))
 
-  def lbracketRightL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, _, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.lbracketRight))
+  def lbracketRightL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, _, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.lbracketRight))
 
-  def rbracketLeftL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, _, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.rbracketLeft))
+  def rbracketLeftL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, _, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.rbracketLeft))
 
-  def rbracketRightL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, _, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.rbracketRight))
+  def rbracketRightL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, _, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.rbracketRight))
 
-  def commaLeftL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, _, p.commaRight, p.colonLeft, p.colonRight, p.indent), p.commaLeft))
+  def commaLeftL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, _, p.commaRight, p.colonLeft, p.colonRight), p.commaLeft))
 
-  def commaRightL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, _, p.colonLeft, p.colonRight, p.indent), p.commaRight))
+  def commaRightL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, _, p.colonLeft, p.colonRight), p.commaRight))
 
-  def colonLeftL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, _, p.colonRight, p.indent), p.colonLeft))
+  def colonLeftL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, _, p.colonRight), p.colonLeft))
 
-  def colonRightL: PrettyParams @> JsonWhitespaces =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, _, p.indent), p.colonRight))
-
-  def indentL: PrettyParams @> (Int => JsonWhitespaces) =
-    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight, _), p.indent))
+  def colonRightL: PrettyParams @> (Int => JsonWhitespaces) =
+    Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, _), p.colonRight))
 }
 
 object JsonWhitespaces extends JsonWhitespacess {
   def apply(v: JsonWhitespace*): JsonWhitespaces =
-    build(DList.fromList(v.toList))
+    build(Vector(v: _*))
 
-  private[argonaut] def build(v: DList[JsonWhitespace]): JsonWhitespaces =
+  private[argonaut] def build(v: Vector[JsonWhitespace]): JsonWhitespaces =
     new JsonWhitespaces {
       val value = v
     }
 }
 
 trait JsonWhitespacess {
-
   implicit val JsonWhitespacesInstances: Equal[JsonWhitespaces] with Show[JsonWhitespaces] with Monoid[JsonWhitespaces] =
     new Equal[JsonWhitespaces] with Show[JsonWhitespaces] with Monoid[JsonWhitespaces] {
       def equal(s1: JsonWhitespaces, s2: JsonWhitespaces) =
@@ -259,7 +258,7 @@ trait JsonWhitespacess {
       def show(s: JsonWhitespaces) =
         s.toList map (_.toChar)
       def zero =
-        JsonWhitespaces.build(DList())
+        JsonWhitespaces.build(Vector())
       def append(s1: JsonWhitespaces, s2: => JsonWhitespaces) =
         s1 ++ s2
     }
@@ -268,6 +267,7 @@ trait JsonWhitespacess {
 
 object Y {
   def main(args: Array[String]) {
+    /*
     val j =
       """
         {
@@ -304,9 +304,10 @@ object Y {
     import StringWrap._
     val r = j.pparse
 
-    r foreach (j => println(PrettyParams.pretty.pretty(j)))
+    r foreach (j => println(PrettyParams.spaces2.pretty(j)))
 
     // PrettyParams.compact.pretty()
+    */
     println("hi")
   }
 }
