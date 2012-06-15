@@ -12,61 +12,64 @@ sealed trait PrettyParams {
   val lbracketRight: Int => JsonWhitespaces
   val rbracketLeft: Int => JsonWhitespaces
   val rbracketRight: Int => JsonWhitespaces
-  val commaLeft: Int => JsonWhitespaces
-  val commaRight: Int => JsonWhitespaces
-  val colonLeft: Int => JsonWhitespaces
-  val colonRight: Int => JsonWhitespaces
+  val commaLeft: (Int, Json) => JsonWhitespaces
+  val commaRight: (Int, Json) => JsonWhitespaces
+  val colonLeft: (Int, Json) => JsonWhitespaces
+  val colonRight: (Int, Json) => JsonWhitespaces
 
   def pretty(j: Json): String =
     lpretty(j).toList.mkString
 
   def lpretty(j: Json): Vector[Char] = {
-    def escape(c: Char): List[Char] =
+    def escape(c: Char): String =
       c match {
-        case '\\' => List('\\', '\\')
-        case '"' => List('\\', '"')
-        case '\b' => List('\\', 'b')
-        case '\f' => List('\\', 'f')
-        case '\n' => List('\\', 'n')
-        case '\r' => List('\\', 'r')
-        case '\t' => List('\\', 't')
-        case _ => List(c)
+        case '\\' => "\\\\"
+        case '"' => "\\\""
+        case '\b' => "\\b"
+        case '\f' => "\\f"
+        case '\n' => "\\n"
+        case '\r' => "\\r"
+        case '\t' => "\\t"
+        case _ => c.toString
       }
 
     def trav(depth: Int, k: Json): Vector[Char] = {
-      val lbrace = List(lbraceLeft(depth).chars, Vector('{'), lbraceRight(depth).chars)
-      val rbrace = List(rbraceLeft(depth).chars, Vector('}'), rbraceRight(depth).chars)
-      val lbracket = List(lbracketLeft(depth).chars, Vector('['), lbracketRight(depth).chars)
-      val rbracket = List(rbracketLeft(depth).chars, Vector(']'), rbracketRight(depth).chars)
-      val comma = List(commaLeft(depth).chars, Vector(','), commaRight(depth).chars)
-      val colon = List(colonLeft(depth).chars, Vector(':'), colonRight(depth).chars)
+      val lbrace = lbraceLeft(depth).chars ++ Vector('{') ++ lbraceRight(depth + 1).chars
+      val rbrace = rbraceLeft(depth + 1).chars ++ Vector('}') ++ rbraceRight(depth).chars
+      val lbracket = lbracketLeft(depth).chars ++ Vector('[') ++ lbracketRight(depth + 1).chars
+      val rbracket = rbracketLeft(depth + 1).chars ++ Vector(']') ++ rbracketRight(depth).chars
+      def comma(g: Json) = commaLeft(depth + 1, g).chars ++ Vector(',') ++ commaRight(depth + 1, g).chars
+      def colon(g: Json) = colonLeft(depth + 1, g).chars ++ Vector(':') ++ colonRight(depth + 1, g).chars
 
       k.fold(
         Vector('n', 'u', 'l', 'l')
       , if(_) Vector('t', 'r', 'u', 'e') else Vector('f', 'a', 'l', 's', 'e')
-      , n => error("") /* Vector.fromList((if(math.floor(n) == n && math.round(n).toDouble == n)
+      , n => Vector((if(math.floor(n) == n && math.round(n).toDouble == n)
                math.round(n).toString
              else
-               n.toString).toList) */
-      , s => error("") // '"' +: DList.fromList(s.toList flatMap escape) :+ '"'
-      , e => error("") /* {
-          def spin(g: List[Vector[Char]]): Vector[Char] =
-            g match {
-              case Nil => rbracket.suml
-              case h::t => h ++ spin(t)
+               n.toString): _*)
+      , s => '"' +: Vector(s flatMap escape: _*) :+ '"'
+      , e =>
+          lbracket ++ e.reverse.foldLeft(None: Option[Json], Vector[Char]())({
+            case ((p, b), jj) => {
+              val w = trav(depth + 1, jj)
+              (Some(jj), p match {
+                case None => w++b
+                case Some(r) => w++comma(r)++b
+              })
             }
-          lbracket.suml ++ spin(e map (trav(depth + 1, _)) intercalate comma)
-        }                 */
-      , o => error("") /*{
-          def spin(g: List[Vector[Char]]): Vector[Char] =
-            g match {
-              case Nil => rbrace.suml
-              case h::t => h ++ spin(t)
+          })._2 ++ rbracket
+      , o =>
+          lbrace ++ o.toList.reverse.foldLeft(None: Option[Json], Vector[Char]())({
+            case ((p, b), (f, jj)) => {
+              val w = ('"' +: Vector(f flatMap escape: _*) :+ '"') ++colon(jj)++trav(depth + 1, jj)
+              (Some(jj), p match {
+                case None => w++b
+                case Some(r) => w++comma(r)++b
+              })
             }
-          lbrace.suml ++ spin(o.toList map {
-            case (f, jj) => ('"' +: Vector.fromList(f.toList flatMap escape) :+ '"') ++ colon.suml ++ trav(depth + 1, jj)
-          } intercalate comma)
-        }*/)
+          })._2 ++ rbrace
+      )
     }
 
     trav(0, j)
@@ -83,10 +86,10 @@ object PrettyParams extends PrettyParamss {
            , lbracketRight0: Int => JsonWhitespaces
            , rbracketLeft0: Int => JsonWhitespaces
            , rbracketRight0: Int => JsonWhitespaces
-           , commaLeft0: Int => JsonWhitespaces
-           , commaRight0: Int => JsonWhitespaces
-           , colonLeft0: Int => JsonWhitespaces
-           , colonRight0: Int => JsonWhitespaces
+           , commaLeft0: (Int, Json) => JsonWhitespaces
+           , commaRight0: (Int, Json) => JsonWhitespaces
+           , colonLeft0: (Int, Json) => JsonWhitespaces
+           , colonRight0: (Int, Json) => JsonWhitespaces
            ): PrettyParams =
     new PrettyParams {
       val lbraceLeft = lbraceLeft0
@@ -105,7 +108,7 @@ object PrettyParams extends PrettyParamss {
 }
 
 trait PrettyParamss {
-  def compact: PrettyParams =
+  def zero: PrettyParams =
     PrettyParams(
       _ => Monoid[JsonWhitespaces].zero
     , _ => Monoid[JsonWhitespaces].zero
@@ -115,31 +118,27 @@ trait PrettyParamss {
     , _ => Monoid[JsonWhitespaces].zero
     , _ => Monoid[JsonWhitespaces].zero
     , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
+    , (_, _) => Monoid[JsonWhitespaces].zero
+    , (_, _) => Monoid[JsonWhitespaces].zero
+    , (_, _) => Monoid[JsonWhitespaces].zero
+    , (_, _) => Monoid[JsonWhitespaces].zero
     )
 
-  def pretty(indent: JsonWhitespaces): PrettyParams = {
+  def pretty(indent: JsonWhitespaces): PrettyParams =
     PrettyParams(
       _ => Monoid[JsonWhitespaces].zero
-    , n => {
-        println(n)
-        indent * 3
-      }
+    , n => JsonLine +: indent * n
+    , n => JsonLine +: indent * (n - 1)
     , _ => Monoid[JsonWhitespaces].zero
     , _ => Monoid[JsonWhitespaces].zero
+      , n => JsonLine +: indent * n
+      , n => JsonLine +: indent * (n - 1)
     , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
-    , _ => Monoid[JsonWhitespaces].zero
+    , (_, _) => Monoid[JsonWhitespaces].zero
+    , (n, _) => JsonLine +: indent * n
+    , (_, _) => +JsonSpace
+    , (_, _) => +JsonSpace
     )
-  }
 
   def spaces2 = pretty(JsonSpace * 2): PrettyParams
 }
@@ -160,8 +159,7 @@ sealed trait JsonWhitespace {
         w
       else
         go(x - 1, this +: w)
-
-    go(n, JsonWhitespaces.build(Vector()))
+    go(n, Monoid[JsonWhitespaces].zero)
   }
 
   def unary_+ : JsonWhitespaces =
@@ -190,8 +188,8 @@ sealed trait JsonWhitespaces {
       if(x <= 0)
         w
       else
-        go(x - 1, w ++ w)
-    go(n, JsonWhitespaces.build(Vector()))
+        go(x - 1, this ++ w)
+    go(n, Monoid[JsonWhitespaces].zero)
   }
 
   def toList: List[JsonWhitespace] =
@@ -227,16 +225,16 @@ sealed trait JsonWhitespaces {
   def rbracketRightL: PrettyParams @> (Int => JsonWhitespaces) =
     Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, _, p.commaLeft, p.commaRight, p.colonLeft, p.colonRight), p.rbracketRight))
 
-  def commaLeftL: PrettyParams @> (Int => JsonWhitespaces) =
+  def commaLeftL: PrettyParams @> ((Int, Json) => JsonWhitespaces) =
     Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, _, p.commaRight, p.colonLeft, p.colonRight), p.commaLeft))
 
-  def commaRightL: PrettyParams @> (Int => JsonWhitespaces) =
+  def commaRightL: PrettyParams @> ((Int, Json) => JsonWhitespaces) =
     Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, _, p.colonLeft, p.colonRight), p.commaRight))
 
-  def colonLeftL: PrettyParams @> (Int => JsonWhitespaces) =
+  def colonLeftL: PrettyParams @> ((Int, Json) => JsonWhitespaces) =
     Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, _, p.colonRight), p.colonLeft))
 
-  def colonRightL: PrettyParams @> (Int => JsonWhitespaces) =
+  def colonRightL: PrettyParams @> ((Int, Json) => JsonWhitespaces) =
     Lens(p => Costate(PrettyParams(p.lbraceLeft, p.lbraceRight, p.rbraceLeft, p.rbraceRight, p.lbracketLeft, p.lbracketRight, p.rbracketLeft, p.rbracketRight, p.commaLeft, p.commaRight, p.colonLeft, _), p.colonRight))
 }
 
@@ -267,39 +265,39 @@ trait JsonWhitespacess {
 
 object Y {
   def main(args: Array[String]) {
-    /*
     val j =
-      """
+"""
+{
+  "abc" : {
+    "def" : 7
+  },
+  "ghi" : {
+    "ata" : null,
+    "jkl" : {
+      "mno" : "argo"
+    }
+  },
+  "pqr" : false,
+  "operator":  "is",
+  "values" : [
+    [
+      "horse",
+      "lolo",
+      [
+        "hi",
+        "there",
         {
-          "abc" :
-            {
-              "def" : 7
-            },
-          "ghi" :
-            {
-              "ata" : null,
-              "jkl" :
-                {
-                  "mno" : "argo"
-                }
-            },
-          "pqr" : false,
-          "operator": "is",
-          "values": [
-                      [
-                        "horse"
-                      , "lolo"
-                      , [
-                          "hi"
-                        , "there"
-                        ]
-                      ]
-                    , "dog"
-                    , "rabbit"
-                    ],
-          "xyz" : 24
+          "f1" : true,
+          "f2" : 7
         }
-      """
+      ]
+    ],
+    "dog",
+    "rabbit"
+  ],
+  "xyz" : 24
+}
+"""
 
     import StringWrap._
     val r = j.pparse
@@ -307,7 +305,5 @@ object Y {
     r foreach (j => println(PrettyParams.spaces2.pretty(j)))
 
     // PrettyParams.compact.pretty()
-    */
-    println("hi")
   }
 }
