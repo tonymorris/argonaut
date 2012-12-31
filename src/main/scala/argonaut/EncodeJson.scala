@@ -21,6 +21,15 @@ sealed trait EncodeJson[-A] {
   def contramap[B](f: B => A): EncodeJson[B] =
     EncodeJson(b => apply(f(b)))
 
+  /**
+   * Split on this encoder and the given encoder.
+   */
+  def <&>[B](x: => EncodeJson[B]): EncodeJson[A \/ B] =
+  EncodeJson {
+    case -\/(a) => apply(a)
+    case \/-(b) => x(b)
+  }
+
 }
 
 object EncodeJson extends EncodeJsons {
@@ -31,6 +40,9 @@ object EncodeJson extends EncodeJsons {
 }
 
 trait EncodeJsons {
+  def contrazip[A, B](e: EncodeJson[A \/ B]): (EncodeJson[A], EncodeJson[B]) =
+    (EncodeJson(a => e(a.left)), EncodeJson(b => e(b.right)))
+
   implicit val IdEncodeJson: EncodeJson[Json] =
     EncodeJson(q => q)
 
